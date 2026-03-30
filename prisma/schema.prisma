@@ -1,0 +1,331 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum IndustryType {
+  RESTAURANT
+  BARBER
+  MECHANIC
+}
+
+enum TenantStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+}
+
+enum ChannelProvider {
+  TWILIO
+}
+
+enum ChannelStatus {
+  DISCONNECTED
+  CONNECTED
+  ERROR
+}
+
+enum SourceType {
+  WEBSITE
+  PDF
+  IMAGE
+  TEXT
+}
+
+enum IngestionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  NEEDS_REVIEW
+  FAILED
+}
+
+enum ArtifactType {
+  PROFILE
+  OFFERING
+  FAQ
+  POLICY
+  HOURS
+  PRICING
+  MISC
+}
+
+enum ArtifactStatus {
+  DRAFT
+  REVIEWED
+  PUBLISHED
+}
+
+enum ConversationStatus {
+  OPEN
+  CLOSED
+  ESCALATED
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+  INTERNAL
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String?
+  email         String         @unique
+  passwordHash  String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  tenantMembers TenantMember[]
+  auditEvents   AuditEvent[]
+}
+
+model Tenant {
+  id                 String              @id @default(cuid())
+  name               String
+  slug               String              @unique
+  industryType       IndustryType
+  status             TenantStatus        @default(DRAFT)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  members            TenantMember[]
+  channels           ChannelConnection[]
+  customers          Customer[]
+  conversations      Conversation[]
+  sourceDocuments    SourceDocument[]
+  extractedArtifacts ExtractedArtifact[]
+  knowledgeChunks    KnowledgeChunk[]
+  faqs               FAQ[]
+  policies           Policy[]
+  offerings          Offering[]
+  businessProfiles   BusinessProfile[]
+  escalationRules    EscalationRule[]
+  intentLogs         IntentLog[]
+  auditEvents        AuditEvent[]
+}
+
+model TenantMember {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  role      String   @default("owner")
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+}
+
+model ChannelConnection {
+  id                     String        @id @default(cuid())
+  tenantId               String
+  provider               ChannelProvider
+  externalNumber         String
+  accountSid             String
+  authTokenEncrypted     String
+  webhookSecretEncrypted String?
+  configJson             Json?
+  status                 ChannelStatus @default(DISCONNECTED)
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  tenant                 Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversations          Conversation[]
+
+  @@unique([provider, externalNumber])
+  @@unique([tenantId, provider])
+}
+
+model Customer {
+  id            String         @id @default(cuid())
+  tenantId      String
+  phone         String
+  name          String?
+  metadataJson  Json?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+
+  @@unique([tenantId, phone])
+}
+
+model Conversation {
+  id                  String             @id @default(cuid())
+  tenantId            String
+  customerId          String
+  channelConnectionId String
+  externalThreadId    String?
+  status              ConversationStatus @default(OPEN)
+  summary             String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer            Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  channelConnection   ChannelConnection  @relation(fields: [channelConnectionId], references: [id], onDelete: Cascade)
+  messages            Message[]
+  escalations         EscalationEvent[]
+}
+
+model Message {
+  id                String           @id @default(cuid())
+  conversationId    String
+  direction         MessageDirection
+  content           String
+  messageType       String           @default("text")
+  providerMessageId String?
+  metadataJson      Json?
+  createdAt         DateTime         @default(now())
+  conversation      Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+model SourceDocument {
+  id              String          @id @default(cuid())
+  tenantId        String
+  sourceType      SourceType
+  originalName    String
+  storagePath     String?
+  sourceUrl       String?
+  ingestionStatus IngestionStatus @default(PENDING)
+  extractedText   String?
+  metadataJson    Json?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  artifacts       ExtractedArtifact[]
+  chunks          KnowledgeChunk[]
+}
+
+model ExtractedArtifact {
+  id               String         @id @default(cuid())
+  tenantId         String
+  sourceDocumentId String
+  artifactType     ArtifactType
+  status           ArtifactStatus @default(DRAFT)
+  confidence       Float?
+  dataJson         Json
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sourceDocument   SourceDocument @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
+}
+
+model KnowledgeChunk {
+  id               String         @id @default(cuid())
+  tenantId         String
+  sourceDocumentId String
+  chunkText        String
+  embedding        Float[]
+  metadataJson     Json?
+  published        Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sourceDocument   SourceDocument @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
+}
+
+model FAQ {
+  id               String   @id @default(cuid())
+  tenantId         String
+  question         String
+  answer           String
+  tagsJson         Json?
+  sourceArtifactId String?
+  published        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model Policy {
+  id               String   @id @default(cuid())
+  tenantId         String
+  policyType       String
+  title            String
+  body             String
+  sourceArtifactId String?
+  published        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model Offering {
+  id               String   @id @default(cuid())
+  tenantId         String
+  category         String?
+  name             String
+  description      String?
+  basePrice        Decimal? @db.Decimal(10, 2)
+  currency         String?  @default("USD")
+  durationMinutes  Int?
+  metadataJson     Json?
+  sourceArtifactId String?
+  published        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model BusinessProfile {
+  id               String   @id @default(cuid())
+  tenantId         String   @unique
+  businessName     String
+  description      String?
+  phone            String?
+  email            String?
+  website          String?
+  address          String?
+  hoursJson        Json?
+  toneInstructions String?
+  publishedVersion Int      @default(1)
+  isPublished      Boolean  @default(false)
+  updatedAt        DateTime @updatedAt
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model EscalationRule {
+  id                 String   @id @default(cuid())
+  tenantId           String   @unique
+  contactLabel       String
+  contactValue       String
+  acknowledgementMsg String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model EscalationEvent {
+  id             String       @id @default(cuid())
+  conversationId String
+  reason         String
+  summary        String?
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+model IntentLog {
+  id              String   @id @default(cuid())
+  tenantId        String
+  conversationId  String?
+  messageText     String
+  predictedIntent String
+  confidence      Float?
+  metadataJson    Json?
+  createdAt       DateTime @default(now())
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model AuditEvent {
+  id           String   @id @default(cuid())
+  tenantId     String?
+  userId       String?
+  action       String
+  entityType   String
+  entityId     String
+  metadataJson Json?
+  createdAt    DateTime @default(now())
+  tenant       Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
