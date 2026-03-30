@@ -1,4 +1,4 @@
-# TenantChat
+﻿# TenantChat
 
 TenantChat is an MVP multi-tenant SaaS platform for small businesses that want grounded AI customer support on WhatsApp. It combines onboarding, business-content ingestion, draft knowledge review, publish controls, Twilio WhatsApp sandbox routing, retrieval-based answers, and human escalation in a single Next.js application.
 
@@ -66,15 +66,16 @@ TenantChat is split into a few simple layers:
 - `NEXTAUTH_SECRET`: secret for Auth.js sessions
 - `OPENAI_API_KEY`: required for live structured extraction and grounded answers
 - `OPENAI_MODEL`: configurable Responses API model name
-- `TWILIO_ACCOUNT_SID`: Twilio account SID
-- `TWILIO_AUTH_TOKEN`: Twilio auth token
-- `TWILIO_WHATSAPP_FROM`: sandbox WhatsApp sender, e.g. `whatsapp:+14155238886`
 - `ENCRYPTION_KEY`: 32-character key for encrypting channel secrets at rest
 - `APP_BASE_URL`: public base URL used to display webhook setup instructions
 
+Twilio note:
+- Twilio credentials are tenant-specific in this MVP and are stored through the `/app/channel` UI per tenant.
+- The platform does not rely on global `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, or `TWILIO_WHATSAPP_FROM` env vars for normal tenant runtime behavior.
+
 ## Supabase/Postgres setup
 
-1. Create a Postgres database in Supabase or locally.
+1. Create a Postgres database in Supabase, Neon, or locally.
 2. Copy the connection string into `DATABASE_URL`.
 3. Run `npm.cmd run db:push`.
 4. If you want file storage later, wire Supabase Storage or S3 into `SourceDocument.storagePath` and replace the manual text ingestion shortcut used in this MVP.
@@ -82,14 +83,14 @@ TenantChat is split into a few simple layers:
 ## Twilio WhatsApp sandbox setup
 
 1. Open the Twilio Console and enable the WhatsApp sandbox.
-2. In TenantChat, open `/app/channel` and save the sandbox sender, account SID, and auth token.
+2. In TenantChat, open `/app/channel` and save the tenant's sandbox sender, account SID, and auth token.
 3. Copy the inbound webhook URL shown on that page.
 4. Paste it into the Twilio sandbox field for incoming messages.
 5. Join the sandbox from a test phone and send a message.
 
 ## OpenAI setup
 
-1. Add your `OPENAI_API_KEY` to `.env`.
+1. Add your `OPENAI_API_KEY` to `.env` or Vercel.
 2. Optionally set `OPENAI_MODEL`.
 3. If the API key is missing, TenantChat still runs with fallback heuristic logic, but extraction quality and response grounding will be limited.
 

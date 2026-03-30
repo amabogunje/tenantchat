@@ -50,8 +50,8 @@ export async function saveChannel(formData: FormData) {
 
   await upsertChannelConnection(tenant.id, {
     externalNumber: String(formData.get("externalNumber") || existingChannel?.externalNumber || ""),
-    accountSid: String(formData.get("accountSid") || existingChannel?.accountSid || process.env.TWILIO_ACCOUNT_SID || "sandbox"),
-    authToken: String(formData.get("authToken") || existingAuthToken || process.env.TWILIO_AUTH_TOKEN || "sandbox"),
+    accountSid: String(formData.get("accountSid") || existingChannel?.accountSid || ""),
+    authToken: String(formData.get("authToken") || existingAuthToken || ""),
     webhookSecret: String(formData.get("webhookSecret") || existingWebhookSecret || ""),
   });
   redirect("/app/channel");

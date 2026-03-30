@@ -30,7 +30,7 @@ export default async function ChannelPage({
       <Card>
         <CardHeader>
           <CardTitle>Twilio WhatsApp sandbox</CardTitle>
-          <CardDescription>Store one WhatsApp sender per tenant for MVP runtime routing.</CardDescription>
+          <CardDescription>Store one WhatsApp sender and credential set per tenant. These values are tenant-specific, not shared platform defaults.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {params?.message ? (
@@ -42,8 +42,8 @@ export default async function ChannelPage({
             </div>
           ) : null}
           <form action={saveChannel} className="space-y-4">
-            <div className="grid gap-2"><Label htmlFor="externalNumber">WhatsApp sender</Label><Input id="externalNumber" name="externalNumber" defaultValue={channel?.externalNumber || process.env.TWILIO_WHATSAPP_FROM || "whatsapp:+14155238886"} /></div>
-            <div className="grid gap-2"><Label htmlFor="accountSid">Account SID</Label><Input id="accountSid" name="accountSid" defaultValue={channel?.accountSid || process.env.TWILIO_ACCOUNT_SID || ""} /></div>
+            <div className="grid gap-2"><Label htmlFor="externalNumber">WhatsApp sender</Label><Input id="externalNumber" name="externalNumber" defaultValue={channel?.externalNumber || "whatsapp:+14155238886"} /></div>
+            <div className="grid gap-2"><Label htmlFor="accountSid">Account SID</Label><Input id="accountSid" name="accountSid" defaultValue={channel?.accountSid || ""} /></div>
             <div className="grid gap-2"><Label htmlFor="authToken">Auth token</Label><Input id="authToken" name="authToken" type="text" defaultValue={savedAuthToken} /></div>
             <div className="grid gap-2"><Label htmlFor="webhookSecret">Webhook secret</Label><Input id="webhookSecret" name="webhookSecret" defaultValue={savedWebhookSecret} /></div>
             <div className="flex gap-3">
