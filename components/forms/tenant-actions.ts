@@ -1,8 +1,8 @@
-﻿"use server";
+"use server";
 
 import { redirect } from "next/navigation";
 import { IndustryType, SourceType } from "@prisma/client";
-import { getCurrentTenantContext } from "@/lib/auth/session";
+import { requireSystemAdmin, requireTenantAdminContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { decryptSecret } from "@/lib/security/crypto";
 import { validateTwilioCredentials } from "@/lib/messaging/twilio";
@@ -11,7 +11,7 @@ import { escalateConversation } from "@/lib/services/conversations";
 import { updateTenantProfile, upsertChannelConnection } from "@/lib/services/tenant";
 
 export async function saveOnboarding(formData: FormData) {
-  const { tenant } = await getCurrentTenantContext();
+  const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-up");
   await updateTenantProfile(tenant.id, {
     tenantName: String(formData.get("tenantName") || tenant.name),
@@ -36,44 +36,48 @@ export async function saveOnboarding(formData: FormData) {
   redirect("/app/settings");
 }
 
-export async function saveChannel(formData: FormData) {
-  const { tenant } = await getCurrentTenantContext();
-  if (!tenant) redirect("/sign-up");
+export async function saveManagedChannel(formData: FormData) {
+  await requireSystemAdmin();
+  const tenantId = String(formData.get("tenantId") || "");
+  if (!tenantId) redirect("/admin/tenants");
 
   const existingChannel = await prisma.channelConnection.findFirst({
-    where: { tenantId: tenant.id, provider: "TWILIO" },
+    where: { tenantId, provider: "TWILIO" },
     orderBy: { updatedAt: "desc" },
   });
 
   const existingAuthToken = existingChannel ? decryptSecret(existingChannel.authTokenEncrypted) : "";
   const existingWebhookSecret = existingChannel?.webhookSecretEncrypted ? decryptSecret(existingChannel.webhookSecretEncrypted) : "";
 
-  await upsertChannelConnection(tenant.id, {
+  await upsertChannelConnection(tenantId, {
     externalNumber: String(formData.get("externalNumber") || existingChannel?.externalNumber || ""),
     accountSid: String(formData.get("accountSid") || existingChannel?.accountSid || ""),
     authToken: String(formData.get("authToken") || existingAuthToken || ""),
     webhookSecret: String(formData.get("webhookSecret") || existingWebhookSecret || ""),
   });
-  redirect("/app/channel");
+
+  redirect(`/admin/tenants/${tenantId}`);
 }
 
-export async function validateChannelCredentials() {
-  const { tenant } = await getCurrentTenantContext();
-  if (!tenant) redirect("/sign-up");
-  const result = await validateTwilioCredentials(tenant.id);
+export async function validateManagedChannelCredentials(formData: FormData) {
+  await requireSystemAdmin();
+  const tenantId = String(formData.get("tenantId") || "");
+  if (!tenantId) redirect("/admin/tenants");
+
+  const result = await validateTwilioCredentials(tenantId);
   const status = result.ok ? "success" : "error";
-  redirect(`/app/channel?validation=${status}&message=${encodeURIComponent(result.message)}`);
+  redirect(`/admin/tenants/${tenantId}?validation=${status}&message=${encodeURIComponent(result.message)}`);
 }
 
 export async function addWebsiteSourceAction(formData: FormData) {
-  const { tenant } = await getCurrentTenantContext();
+  const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-up");
   await createWebsiteSource(tenant.id, String(formData.get("url") || ""));
   redirect("/app/sources");
 }
 
 export async function addTextSourceAction(formData: FormData) {
-  const { tenant } = await getCurrentTenantContext();
+  const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-up");
   await createTextSource(
     tenant.id,
@@ -91,14 +95,14 @@ export async function processSourceAction(formData: FormData) {
 }
 
 export async function publishKnowledgeAction() {
-  const { tenant } = await getCurrentTenantContext();
+  const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-up");
   await publishKnowledge(tenant.id);
   redirect("/app/knowledge");
 }
 
 export async function updateEscalationContact(formData: FormData) {
-  const { tenant } = await getCurrentTenantContext();
+  const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-up");
   await prisma.escalationRule.upsert({
     where: { tenantId: tenant.id },

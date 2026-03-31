@@ -1,4 +1,4 @@
-﻿import NextAuth from "next-auth";
+import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
@@ -18,13 +18,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   pages: { signIn: "/sign-in" },
   callbacks: {
     async jwt({ token, user }) {
-      if (user) (token as typeof token & { userId?: string }).userId = user.id;
+      if (user) {
+        const typedToken = token as typeof token & { userId?: string; userRole?: string };
+        typedToken.userId = user.id;
+        typedToken.userRole = (user as typeof user & { role?: string }).role;
+      }
       return token;
     },
     async session({ session, token }) {
-      const typedToken = token as typeof token & { userId?: string };
+      const typedToken = token as typeof token & { userId?: string; userRole?: string };
       if (session.user && typedToken.userId) {
         session.user.id = typedToken.userId;
+        session.user.role = typedToken.userRole === "SYSTEM_ADMIN" ? "SYSTEM_ADMIN" : "TENANT_ADMIN";
       }
       return session;
     },
@@ -44,7 +49,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!user) return null;
         const valid = await verifyPassword(parsed.data.password, user.passwordHash);
         if (!valid) return null;
-        return { id: user.id, email: user.email, name: user.name };
+        return { id: user.id, email: user.email, name: user.name, role: user.role };
       },
     }),
   ],
@@ -54,6 +59,7 @@ declare module "next-auth" {
   interface Session {
     user: {
       id: string;
+      role: "SYSTEM_ADMIN" | "TENANT_ADMIN";
       email?: string | null;
       name?: string | null;
     };

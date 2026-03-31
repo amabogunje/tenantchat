@@ -3,6 +3,19 @@ import { prisma } from "@/lib/db/prisma";
 import { hashPassword } from "@/lib/auth/password";
 import { encryptSecret } from "@/lib/security/crypto";
 
+async function seedSystemAdmin() {
+  await prisma.user.upsert({
+    where: { email: "platform@example.com" },
+    update: { name: "Platform Operator", role: "SYSTEM_ADMIN" },
+    create: {
+      name: "Platform Operator",
+      email: "platform@example.com",
+      role: "SYSTEM_ADMIN",
+      passwordHash: await hashPassword("password123"),
+    },
+  });
+}
+
 async function seedTenant(input: {
   ownerEmail: string;
   ownerName: string;
@@ -20,8 +33,13 @@ async function seedTenant(input: {
 }) {
   const user = await prisma.user.upsert({
     where: { email: input.ownerEmail },
-    update: {},
-    create: { name: input.ownerName, email: input.ownerEmail, passwordHash: await hashPassword(input.password) },
+    update: { role: "TENANT_ADMIN" },
+    create: {
+      name: input.ownerName,
+      email: input.ownerEmail,
+      role: "TENANT_ADMIN",
+      passwordHash: await hashPassword(input.password),
+    },
   });
 
   const tenant = await prisma.tenant.upsert({
@@ -34,6 +52,12 @@ async function seedTenant(input: {
       status: "ACTIVE",
       members: { create: { userId: user.id, role: "owner" } },
     },
+  });
+
+  await prisma.tenantMember.upsert({
+    where: { tenantId_userId: { tenantId: tenant.id, userId: user.id } },
+    update: { role: "owner" },
+    create: { tenantId: tenant.id, userId: user.id, role: "owner" },
   });
 
   await prisma.businessProfile.upsert({
@@ -68,8 +92,13 @@ async function seedTenant(input: {
   });
 
   await prisma.channelConnection.upsert({
-    where: { provider_externalNumber: { provider: "TWILIO", externalNumber: input.externalNumber } },
-    update: { tenantId: tenant.id, accountSid: process.env.TWILIO_ACCOUNT_SID || "sandbox-account", authTokenEncrypted: encryptSecret(process.env.TWILIO_AUTH_TOKEN || "sandbox-token"), status: "CONNECTED" },
+    where: { tenantId_provider: { tenantId: tenant.id, provider: "TWILIO" } },
+    update: {
+      externalNumber: input.externalNumber,
+      accountSid: process.env.TWILIO_ACCOUNT_SID || "sandbox-account",
+      authTokenEncrypted: encryptSecret(process.env.TWILIO_AUTH_TOKEN || "sandbox-token"),
+      status: "CONNECTED",
+    },
     create: {
       tenantId: tenant.id,
       provider: "TWILIO",
@@ -103,6 +132,8 @@ async function seedTenant(input: {
 }
 
 async function main() {
+  await seedSystemAdmin();
+
   await seedTenant({
     ownerEmail: "restaurant@example.com",
     ownerName: "Rosa Rivera",

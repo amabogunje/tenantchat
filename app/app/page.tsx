@@ -3,11 +3,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/layout/stat-card";
-import { getCurrentTenantContext } from "@/lib/auth/session";
+import { requireTenantAdminContext } from "@/lib/auth/session";
 import { getDashboardData } from "@/lib/services/dashboard";
 
 export default async function AppOverviewPage() {
-  const { tenant } = await getCurrentTenantContext();
+  const { tenant } = await requireTenantAdminContext();
   if (!tenant) {
     return <div className="rounded-3xl border bg-card p-8">Create your first tenant from onboarding.</div>;
   }
@@ -24,7 +24,7 @@ export default async function AppOverviewPage() {
         </div>
         <div className="flex gap-3">
           <Button asChild><Link href="/app/sources">Add sources</Link></Button>
-          <Button asChild variant="outline"><Link href="/app/channel">Configure WhatsApp</Link></Button>
+          <Button asChild variant="outline"><Link href="/app/settings">Review business settings</Link></Button>
         </div>
       </section>
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -43,23 +43,19 @@ export default async function AppOverviewPage() {
             {data.sources.map((source) => (
               <div key={source.id} className="rounded-2xl border p-4">
                 <div className="font-medium">{source.originalName}</div>
-                <div className="text-sm text-muted-foreground">{source.sourceType} � {source.ingestionStatus}</div>
+                <div className="text-sm text-muted-foreground">{source.sourceType} | {source.ingestionStatus}</div>
               </div>
             ))}
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Top intents</CardTitle>
-            <CardDescription>The current MVP classifier tracks lightweight intent counts for admin visibility.</CardDescription>
+            <CardTitle>Platform-managed messaging</CardTitle>
+            <CardDescription>WhatsApp credentials are configured by your TenantChat operator, while you manage business knowledge and escalation rules here.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {data.analytics.topIntents.length ? data.analytics.topIntents.map((item) => (
-              <div key={item.intent} className="flex items-center justify-between rounded-2xl border p-4">
-                <span>{item.intent}</span>
-                <Badge>{item.count}</Badge>
-              </div>
-            )) : <p className="text-sm text-muted-foreground">No customer messages yet.</p>}
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <p>Need a sender change, new Twilio account, or webhook update? Reach out to your system administrator.</p>
+            <Button asChild variant="outline"><Link href="/app/channel">View channel status</Link></Button>
           </CardContent>
         </Card>
       </section>

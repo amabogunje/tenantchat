@@ -1,4 +1,4 @@
-﻿# TenantChat
+# TenantChat
 
 TenantChat is an MVP multi-tenant SaaS platform for small businesses that want grounded AI customer support on WhatsApp. It combines onboarding, business-content ingestion, draft knowledge review, publish controls, Twilio WhatsApp sandbox routing, retrieval-based answers, and human escalation in a single Next.js application.
 
@@ -6,23 +6,43 @@ TenantChat is an MVP multi-tenant SaaS platform for small businesses that want g
 
 TenantChat is split into a few simple layers:
 
-- Control plane: authenticated admin pages under `/app` for onboarding, channel setup, sources, knowledge review, conversations, escalations, and analytics.
+- Control plane: authenticated admin pages split into `/admin` for system operators and `/app` for tenant business admins.
 - Execution plane: route handlers under `/app/api` for tenant config, ingestion, publishing, analytics, and Twilio inbound webhooks.
-- Domain model: Prisma models for tenants, members, sources, extracted artifacts, published knowledge, channels, customers, conversations, messages, and escalations.
+- Domain model: Prisma models for users, roles, tenants, members, sources, extracted artifacts, published knowledge, channels, customers, conversations, messages, and escalations.
 - LLM services: a small OpenAI Responses API wrapper in `lib/llm/service.ts` for structured extraction, intent classification, answer generation, and escalation summaries.
 - Messaging adapters: Twilio WhatsApp helper in `lib/messaging/twilio.ts`, designed so Meta Cloud API can be added later behind the same abstraction.
+
+## Admin model
+
+TenantChat now supports two backend operators with distinct surfaces:
+
+- System admin: signs into `/admin`, can see every tenant, manage tenant-owned Twilio credentials, review platform readiness, and operate the shared SaaS.
+- Tenant admin: signs into `/app`, can manage only their own business profile, sources, knowledge base, conversations, escalation contact, and analytics.
+
+Shared platform configuration:
+
+- `OPENAI_API_KEY` remains a platform-level env var shared by all tenants.
+
+Tenant-owned operational configuration:
+
+- Twilio sender
+- Twilio Account SID
+- Twilio Auth Token
+- Twilio webhook secret
+
+Those Twilio values are now managed from the system admin surface on a per-tenant basis.
 
 ## What the MVP supports
 
 - Multi-tenant onboarding with email/password auth
 - Industry pack selection for restaurant, barber, and mechanic businesses
-- Tenant-scoped WhatsApp sandbox channel configuration
+- System-admin tenant management plus tenant-admin business management
 - Website URL intake and manual text/PDF/image transcript ingestion
 - Draft extraction into profile, offerings, FAQs, policies, and retrieval chunks
 - Review-and-publish workflow where runtime only uses published knowledge
 - Inbound customer message handling with intent classification and grounded retrieval
 - Human handoff with escalation summaries and dashboard visibility
-- Seed data for three example tenants
+- Seed data for one system admin and three example tenant admins
 
 ## Tech stack
 
@@ -50,7 +70,7 @@ TenantChat is split into a few simple layers:
    ```bash
    npm.cmd run db:push
    ```
-5. Seed example tenants:
+5. Seed example users and tenants:
    ```bash
    npm.cmd run db:seed
    ```
@@ -66,11 +86,14 @@ TenantChat is split into a few simple layers:
 - `NEXTAUTH_SECRET`: secret for Auth.js sessions
 - `OPENAI_API_KEY`: required for live structured extraction and grounded answers
 - `OPENAI_MODEL`: configurable Responses API model name
-- `ENCRYPTION_KEY`: 32-character key for encrypting channel secrets at rest
+- `ENCRYPTION_KEY`: 32-character key for encrypting tenant secrets at rest
 - `APP_BASE_URL`: public base URL used to display webhook setup instructions
 
 Twilio note:
-- Twilio credentials are tenant-specific in this MVP and are stored through the `/app/channel` UI per tenant.
+
+- Twilio credentials are tenant-specific in this MVP.
+- System admins manage them from `/admin/tenants/[tenantId]`.
+- Tenant admins can only view messaging status from `/app/channel`.
 - The platform does not rely on global `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, or `TWILIO_WHATSAPP_FROM` env vars for normal tenant runtime behavior.
 
 ## Supabase/Postgres setup
@@ -83,10 +106,11 @@ Twilio note:
 ## Twilio WhatsApp sandbox setup
 
 1. Open the Twilio Console and enable the WhatsApp sandbox.
-2. In TenantChat, open `/app/channel` and save the tenant's sandbox sender, account SID, and auth token.
-3. Copy the inbound webhook URL shown on that page.
-4. Paste it into the Twilio sandbox field for incoming messages.
-5. Join the sandbox from a test phone and send a message.
+2. Sign in as a system admin and open `/admin/tenants/<tenantId>`.
+3. Save the tenant's sandbox sender, account SID, and auth token.
+4. Copy the inbound webhook URL shown there.
+5. Paste it into the Twilio sandbox field for incoming messages.
+6. Join the sandbox from a test phone and send a message.
 
 ## OpenAI setup
 
@@ -94,8 +118,9 @@ Twilio note:
 2. Optionally set `OPENAI_MODEL`.
 3. If the API key is missing, TenantChat still runs with fallback heuristic logic, but extraction quality and response grounding will be limited.
 
-## Test accounts after seeding
+## Seed accounts after seeding
 
+- `platform@example.com` / `password123` for the system admin control plane
 - `restaurant@example.com` / `password123`
 - `barber@example.com` / `password123`
 - `mechanic@example.com` / `password123`

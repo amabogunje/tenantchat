@@ -11,7 +11,7 @@ export default function SignInPage() {
       <Card>
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
-          <CardDescription>Access your tenant admin dashboard.</CardDescription>
+          <CardDescription>System admins and business admins sign in here and are routed to the right control plane automatically.</CardDescription>
         </CardHeader>
         <CardContent>
           <form action={loginUser} className="space-y-4">
@@ -26,7 +26,7 @@ export default function SignInPage() {
             <Button type="submit" className="w-full">Sign in</Button>
           </form>
           <p className="mt-4 text-sm text-muted-foreground">
-            New here? <Link href="/sign-up" className="text-primary underline">Create an account</Link>
+            New here? <Link href="/sign-up" className="text-primary underline">Create a tenant admin account</Link>
           </p>
         </CardContent>
       </Card>

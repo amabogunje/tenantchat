@@ -13,10 +13,11 @@ export async function registerUser(formData: FormData) {
   const businessName = String(formData.get("businessName") || "");
   const industry = String(formData.get("industry") || IndustryType.RESTAURANT) as IndustryType;
 
-  const user = await prisma.user.create({
+  await prisma.user.create({
     data: {
       name,
       email,
+      role: "TENANT_ADMIN",
       passwordHash: await hashPassword(password),
       tenantMembers: {
         create: {
@@ -56,6 +57,6 @@ export async function loginUser(formData: FormData) {
   await signIn("credentials", {
     email: String(formData.get("email") || ""),
     password: String(formData.get("password") || ""),
-    redirectTo: "/app",
+    redirectTo: "/console",
   });
 }
