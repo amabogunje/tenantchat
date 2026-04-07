@@ -1,0 +1,107 @@
+import type { VerticalConfig } from "@/verticals/shared/types";
+import { registerVertical } from "@/verticals/shared/registry";
+import { menuCategorySchema, menuItemSchema, restaurantProfileSchema } from "@/verticals/restaurant/schemas";
+
+export const restaurantVertical = registerVertical({
+  key: "restaurant",
+  label: "Restaurant",
+  ownerRouteBase: "/app/restaurant",
+  profileSchema: restaurantProfileSchema,
+  catalogSchema: menuCategorySchema.array().and(menuItemSchema.array()),
+  faqCategories: [
+    "Reservations",
+    "Takeout",
+    "Catering",
+    "Dietary",
+    "Parking",
+    "Policies",
+  ],
+  onboardingPrompts: [
+    "Share your website and anything customers already see today.",
+    "Upload menus, catering flyers, reservation notes, or takeout instructions.",
+    "Review what we found before your assistant goes live.",
+  ],
+  extractionRules: [
+    "Extract hours, contact details, address, and cuisine type.",
+    "Extract menu categories, menu items, prices, modifiers, and dietary tags.",
+    "Extract reservation, takeout, and catering details with source references.",
+    "Generate FAQ candidates with confidence and source transparency.",
+  ],
+  reviewRules: [
+    "Always review hours, address, phone, reservation settings, takeout settings, and catering settings.",
+    "Review menu pricing when confidence is below 0.85.",
+    "Review any answer used in reservation, takeout, or catering preview flows when confidence is below 0.8.",
+  ],
+  previewQuestions: [
+    { id: "preview-1", prompt: "Book a table for 4 at 7pm", intent: "reservation_request" },
+    { id: "preview-2", prompt: "Do you have vegan options?", intent: "dietary_question" },
+    { id: "preview-3", prompt: "I want catering for 20 people", intent: "catering_inquiry" },
+  ],
+  operationalUpdateTypes: [
+    "closed_today",
+    "changed_hours",
+    "sold_out_item",
+    "disable_takeout",
+    "disable_catering_date",
+    "special_note",
+    "promotion",
+  ],
+  conversationIntents: [
+    "reservation_request",
+    "takeout_order",
+    "catering_inquiry",
+    "hours_question",
+    "menu_question",
+    "dietary_question",
+    "location_question",
+    "general_question",
+    "escalation_request",
+  ],
+  intentHandlers: {
+    reservation_request: "reservation-flow",
+    takeout_order: "takeout-flow",
+    catering_inquiry: "catering-flow",
+    escalation_request: "escalation-flow",
+  },
+  actions: [
+    "book_reservation",
+    "start_takeout_order",
+    "submit_catering_request",
+    "send_menu_link",
+    "send_location",
+  ],
+  intentActionMap: {
+    reservation_request: ["book_reservation"],
+    takeout_order: ["start_takeout_order", "send_menu_link"],
+    catering_inquiry: ["submit_catering_request"],
+    menu_question: ["send_menu_link"],
+    location_question: ["send_location"],
+  },
+  assistantBehavior: {
+    tone: "friendly",
+    verbosity: "normal",
+    upsellEnabled: true,
+    escalationRules: {
+      lowConfidence: true,
+      complaint: true,
+      pricingAmbiguity: true,
+    },
+  },
+  dashboardWidgets: [
+    { id: "assistant-status", label: "Assistant status", description: "Draft, needs review, or live" },
+    { id: "auto-answer-rate", label: "Auto-answer rate", description: "How often the assistant handles questions end to end" },
+    { id: "review-queue", label: "Needs review", description: "Critical details and answers to confirm" },
+    { id: "todays-updates", label: "Today's updates", description: "Temporary changes customers need to know" },
+  ],
+  navigation: [
+    { href: "/app/restaurant/overview", label: "Overview", description: "See what needs attention today" },
+    { href: "/app/restaurant/setup", label: "Setup", description: "Upload materials and review what we found" },
+    { href: "/app/restaurant/profile", label: "Restaurant Profile", description: "Edit the basics customers rely on" },
+    { href: "/app/restaurant/menu", label: "Menu & Services", description: "Manage dishes, takeout, and catering" },
+    { href: "/app/restaurant/questions", label: "Customer Questions", description: "Review and refine answers" },
+    { href: "/app/restaurant/conversations", label: "Conversations", description: "Monitor recent chats and gaps" },
+    { href: "/app/restaurant/updates", label: "Today's Updates", description: "Quick daily changes" },
+    { href: "/app/restaurant/analytics", label: "Analytics", description: "Simple trends and insights" },
+    { href: "/app/restaurant/settings", label: "Settings", description: "Tone, notifications, and connection status" },
+  ],
+} satisfies VerticalConfig);

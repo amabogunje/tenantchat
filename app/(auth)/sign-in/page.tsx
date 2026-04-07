@@ -11,7 +11,7 @@ export default function SignInPage() {
       <Card>
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
-          <CardDescription>System admins and business admins sign in here and are routed to the right control plane automatically.</CardDescription>
+          <CardDescription>Restaurant owners and system admins sign in here and land in the right workspace automatically.</CardDescription>
         </CardHeader>
         <CardContent>
           <form action={loginUser} className="space-y-4">
@@ -26,7 +26,7 @@ export default function SignInPage() {
             <Button type="submit" className="w-full">Sign in</Button>
           </form>
           <p className="mt-4 text-sm text-muted-foreground">
-            New here? <Link href="/sign-up" className="text-primary underline">Create a tenant admin account</Link>
+            New here? <Link href="/sign-up" className="text-primary underline">Start your restaurant setup</Link>
           </p>
         </CardContent>
       </Card>

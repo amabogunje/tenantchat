@@ -1,23 +1,42 @@
 # TenantChat
 
-TenantChat is an MVP multi-tenant SaaS platform for small businesses that want grounded AI customer support on WhatsApp. It combines onboarding, business-content ingestion, draft knowledge review, publish controls, Twilio WhatsApp sandbox routing, retrieval-based answers, and human escalation in a single Next.js application.
+TenantChat is a multi-tenant SaaS product for small businesses that want a grounded WhatsApp assistant. The current owner-facing experience is restaurant-first: a restaurant owner uploads their website, menu, flyers, and notes, reviews what the system understood, previews how customers can ask questions, and then goes live with lightweight daily updates.
 
-## MVP architecture
+## Product architecture
 
 TenantChat is split into a few simple layers:
 
-- Control plane: authenticated admin pages split into `/admin` for system operators and `/app` for tenant business admins.
-- Execution plane: route handlers under `/app/api` for tenant config, ingestion, publishing, analytics, and Twilio inbound webhooks.
+- Owner experience: authenticated restaurant pages under `/app/restaurant` for overview, setup, profile, menu, customer questions, conversations, daily updates, analytics, settings, onboarding, and assistant preview.
+- System admin surface: authenticated pages under `/admin` for cross-tenant management and tenant-owned Twilio configuration.
+- Execution plane: route handlers under `/app/api` for ingestion, publishing, analytics, conversations, and Twilio inbound webhooks.
+- Vertical registry: shared registration and lookup in `verticals/shared`, with restaurant implemented as the first modular vertical in `verticals/restaurant`.
 - Domain model: Prisma models for users, roles, tenants, members, sources, extracted artifacts, published knowledge, channels, customers, conversations, messages, and escalations.
 - LLM services: a small OpenAI Responses API wrapper in `lib/llm/service.ts` for structured extraction, intent classification, answer generation, and escalation summaries.
 - Messaging adapters: Twilio WhatsApp helper in `lib/messaging/twilio.ts`, designed so Meta Cloud API can be added later behind the same abstraction.
 
-## Admin model
+## Restaurant vertical model
 
-TenantChat now supports two backend operators with distinct surfaces:
+The restaurant module defines:
+
+- profile schema
+- menu and service schema
+- FAQ categories
+- restaurant-specific intents
+- restaurant-specific actions
+- assistant behavior defaults
+- onboarding prompts
+- review rules
+- preview questions
+- daily update types
+
+This keeps restaurant behavior inside `verticals/restaurant` so future verticals can plug in without rewriting the shared app shell.
+
+## Operator model
+
+TenantChat supports two authenticated roles:
 
 - System admin: signs into `/admin`, can see every tenant, manage tenant-owned Twilio credentials, review platform readiness, and operate the shared SaaS.
-- Tenant admin: signs into `/app`, can manage only their own business profile, sources, knowledge base, conversations, escalation contact, and analytics.
+- Tenant admin: signs into the restaurant owner experience under `/app/restaurant`, where they manage profile, menu, customer questions, conversations, daily updates, analytics, and settings.
 
 Shared platform configuration:
 
@@ -30,16 +49,16 @@ Tenant-owned operational configuration:
 - Twilio Auth Token
 - Twilio webhook secret
 
-Those Twilio values are now managed from the system admin surface on a per-tenant basis.
+Those Twilio values are managed from the system admin surface on a per-tenant basis.
 
 ## What the MVP supports
 
 - Multi-tenant onboarding with email/password auth
-- Industry pack selection for restaurant, barber, and mechanic businesses
-- System-admin tenant management plus tenant-admin business management
+- Restaurant-first owner experience with guided onboarding and chat-style preview
+- Modular vertical registry with restaurant implemented as the first plugin
 - Website URL intake and manual text/PDF/image transcript ingestion
-- Draft extraction into profile, offerings, FAQs, policies, and retrieval chunks
-- Review-and-publish workflow where runtime only uses published knowledge
+- Draft extraction into profile, menu items, catering packages, FAQs, policies, and review items
+- Confidence and source transparency in preview, review, and customer question flows
 - Inbound customer message handling with intent classification and grounded retrieval
 - Human handoff with escalation summaries and dashboard visibility
 - Seed data for one system admin and three example tenant admins
@@ -93,15 +112,8 @@ Twilio note:
 
 - Twilio credentials are tenant-specific in this MVP.
 - System admins manage them from `/admin/tenants/[tenantId]`.
-- Tenant admins can only view messaging status from `/app/channel`.
+- Restaurant owners work inside `/app/restaurant/*` and only see business-friendly connection status and assistant settings.
 - The platform does not rely on global `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, or `TWILIO_WHATSAPP_FROM` env vars for normal tenant runtime behavior.
-
-## Supabase/Postgres setup
-
-1. Create a Postgres database in Supabase, Neon, or locally.
-2. Copy the connection string into `DATABASE_URL`.
-3. Run `npm.cmd run db:push`.
-4. If you want file storage later, wire Supabase Storage or S3 into `SourceDocument.storagePath` and replace the manual text ingestion shortcut used in this MVP.
 
 ## Twilio WhatsApp sandbox setup
 
@@ -111,12 +123,6 @@ Twilio note:
 4. Copy the inbound webhook URL shown there.
 5. Paste it into the Twilio sandbox field for incoming messages.
 6. Join the sandbox from a test phone and send a message.
-
-## OpenAI setup
-
-1. Add your `OPENAI_API_KEY` to `.env` or Vercel.
-2. Optionally set `OPENAI_MODEL`.
-3. If the API key is missing, TenantChat still runs with fallback heuristic logic, but extraction quality and response grounding will be limited.
 
 ## Seed accounts after seeding
 
@@ -143,5 +149,5 @@ Current test coverage includes:
 
 - Runtime retrieval currently prefers published structured facts, then FAQs, then lexical chunk retrieval.
 - Image uploads are stored conceptually in the domain model, but image OCR is intentionally lightweight for MVP and should be extended later.
-- The messaging and industry layers are structured for future Meta Cloud API support and additional industry packs.
+- The vertical registry and shared workflow layers are structured for future barbershop, salon, and other service-business modules.
 - Billing, advanced RBAC, bookings, and richer observability are intentionally left out of MVP scope.

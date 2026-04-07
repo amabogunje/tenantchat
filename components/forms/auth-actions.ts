@@ -31,7 +31,7 @@ export async function registerUser(formData: FormData) {
               businessProfiles: {
                 create: {
                   businessName: businessName || `${name}'s Business`,
-                  description: "Draft profile awaiting ingestion review.",
+                  description: "Draft profile awaiting review.",
                 },
               },
               escalationRules: {
@@ -49,7 +49,7 @@ export async function registerUser(formData: FormData) {
   });
 
   await signIn("credentials", { email, password, redirect: false });
-  redirect("/app/onboarding");
+  redirect(industry === IndustryType.RESTAURANT ? "/app/restaurant/onboarding" : "/app");
 }
 
 export async function loginUser(formData: FormData) {

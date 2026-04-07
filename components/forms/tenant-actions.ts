@@ -33,7 +33,7 @@ export async function saveOnboarding(formData: FormData) {
       Sunday: String(formData.get("hoursSunday") || ""),
     },
   });
-  redirect("/app/settings");
+  redirect("/app/restaurant/profile");
 }
 
 export async function saveManagedChannel(formData: FormData) {
@@ -73,7 +73,7 @@ export async function addWebsiteSourceAction(formData: FormData) {
   const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-up");
   await createWebsiteSource(tenant.id, String(formData.get("url") || ""));
-  redirect("/app/sources");
+  redirect("/app/restaurant/setup");
 }
 
 export async function addTextSourceAction(formData: FormData) {
@@ -85,20 +85,20 @@ export async function addTextSourceAction(formData: FormData) {
     String(formData.get("extractedText") || ""),
     String(formData.get("sourceType") || SourceType.TEXT) as SourceType,
   );
-  redirect("/app/sources");
+  redirect("/app/restaurant/setup");
 }
 
 export async function processSourceAction(formData: FormData) {
   const sourceId = String(formData.get("sourceId") || "");
   await processSource(sourceId);
-  redirect("/app/knowledge");
+  redirect("/app/restaurant/setup");
 }
 
 export async function publishKnowledgeAction() {
   const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-up");
   await publishKnowledge(tenant.id);
-  redirect("/app/knowledge");
+  redirect("/app/restaurant/questions");
 }
 
 export async function updateEscalationContact(formData: FormData) {
@@ -118,10 +118,10 @@ export async function updateEscalationContact(formData: FormData) {
       acknowledgementMsg: String(formData.get("acknowledgementMsg") || "Thanks, a human will follow up shortly."),
     },
   });
-  redirect("/app/settings");
+  redirect("/app/restaurant/settings");
 }
 
 export async function manualEscalateAction(formData: FormData) {
   await escalateConversation(String(formData.get("conversationId") || ""), String(formData.get("reason") || "Manual admin escalation"), false);
-  redirect("/app/escalations");
+  redirect("/app/restaurant/conversations");
 }
