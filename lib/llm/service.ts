@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { IndustryType } from "@prisma/client";
 import { getIndustryPack } from "@/lib/industry/packs";
 import { getOpenAIClient, getOpenAIModel } from "@/lib/llm/client";
@@ -64,6 +65,10 @@ function parseJsonFromText(text: string) {
   }
 }
 
+function normalizeText(value: string) {
+  return value.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+}
+
 export async function generateStructuredExtraction(input: {
   industry: IndustryType;
   text: string;
@@ -109,6 +114,43 @@ export async function generateStructuredExtraction(input: {
   }
 
   return structuredExtractionSchema.parse(parsed);
+}
+
+export async function extractImageText(input: {
+  buffer: Buffer;
+  mimeType: string;
+  filename: string;
+}): Promise<string> {
+  const client = getOpenAIClient();
+  if (!client) {
+    return "";
+  }
+
+  const response = await client.responses.create({
+    model: getOpenAIModel(),
+    input: [
+      {
+        role: "system",
+        content: "Extract readable text from business document images. Preserve menu items, prices, headings, and contact details. Return plain text only.",
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: `This image is a restaurant business document named ${input.filename}. Read it carefully and extract the visible text in a clean plain-text format. Preserve menu item names, prices, catering package details, and headings. Do not summarize.`,
+          },
+          {
+            type: "input_image",
+            image_url: `data:${input.mimeType || "image/jpeg"};base64,${input.buffer.toString("base64")}`,
+            detail: "high",
+          },
+        ],
+      },
+    ],
+  });
+
+  return normalizeText(response.output_text || "");
 }
 
 export async function classifyIntent(message: string): Promise<IntentResult> {

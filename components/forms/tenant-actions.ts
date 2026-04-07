@@ -6,6 +6,7 @@ import { IndustryType, SourceType } from "@prisma/client";
 import { requireSystemAdmin, requireTenantAdminContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { extractDocumentText } from "@/lib/ingestion/extract";
+import { extractImageText } from "@/lib/llm/service";
 import { validateTwilioCredentials } from "@/lib/messaging/twilio";
 import { decryptSecret } from "@/lib/security/crypto";
 import { escalateConversation } from "@/lib/services/conversations";
@@ -140,25 +141,42 @@ export async function uploadSetupDocumentsAction(formData: FormData) {
 
   for (const file of files) {
     const sourceType = inferSourceType(file.name, file.type);
+    const buffer = Buffer.from(await file.arrayBuffer());
 
     if (sourceType === SourceType.IMAGE) {
-      await prisma.sourceDocument.create({
-        data: {
-          tenantId: tenant.id,
-          sourceType,
-          originalName: file.name,
-          extractedText: `Image uploaded: ${file.name}. Manual review may still be needed.`,
-          ingestionStatus: "NEEDS_REVIEW",
-          metadataJson: { mimeType: file.type, size: file.size },
-        },
-      });
+      let extractedText = "";
+
+      try {
+        extractedText = await extractImageText({
+          buffer,
+          mimeType: file.type || "image/jpeg",
+          filename: file.name,
+        });
+      } catch {
+        extractedText = "";
+      }
+
+      if (extractedText) {
+        const source = await createTextSource(tenant.id, file.name, extractedText, sourceType);
+        await processSource(source.id);
+      } else {
+        await prisma.sourceDocument.create({
+          data: {
+            tenantId: tenant.id,
+            sourceType,
+            originalName: file.name,
+            extractedText: `Image uploaded: ${file.name}. OCR could not confidently read this image, so manual review may still be needed.`,
+            ingestionStatus: "NEEDS_REVIEW",
+            metadataJson: { mimeType: file.type, size: file.size },
+          },
+        });
+      }
       continue;
     }
 
     let extractedText = `${file.name}\n\nUploaded by the restaurant owner during setup. Use this file as supporting source material and flag it for review if details are unclear.`;
 
     try {
-      const buffer = Buffer.from(await file.arrayBuffer());
       const parsedText = await extractDocumentText({
         buffer,
         filename: file.name,
@@ -203,7 +221,7 @@ export async function publishKnowledgeAction() {
   if (!tenant) redirect("/sign-up");
 
   const pendingSources = await prisma.sourceDocument.findMany({
-    where: { tenantId: tenant.id, ingestionStatus: "PENDING", sourceType: { in: [SourceType.WEBSITE, SourceType.PDF, SourceType.TEXT] } },
+    where: { tenantId: tenant.id, ingestionStatus: "PENDING", sourceType: { in: [SourceType.WEBSITE, SourceType.PDF, SourceType.TEXT, SourceType.IMAGE] } },
     select: { id: true },
   });
 
