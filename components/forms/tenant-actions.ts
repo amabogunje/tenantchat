@@ -13,6 +13,16 @@ import { escalateConversation } from "@/lib/services/conversations";
 import { createTextSource, createWebsiteSource, processSource, publishKnowledge } from "@/lib/services/sources";
 import { updateTenantProfile, upsertChannelConnection } from "@/lib/services/tenant";
 
+async function markSourceNeedsReview(sourceId: string, reason: string) {
+  await prisma.sourceDocument.update({
+    where: { id: sourceId },
+    data: {
+      ingestionStatus: "NEEDS_REVIEW",
+      metadataJson: { issue: reason, flaggedAt: new Date().toISOString() },
+    },
+  });
+}
+
 export async function saveOnboarding(formData: FormData) {
   const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-up");
@@ -123,7 +133,11 @@ export async function saveSetupLinksAction(formData: FormData) {
   for (const url of normalizedLinks) {
     if (existingUrls.has(url)) continue;
     const source = await createWebsiteSource(tenant.id, url);
-    await processSource(source.id);
+    try {
+      await processSource(source.id);
+    } catch (error) {
+      await markSourceNeedsReview(source.id, error instanceof Error ? error.message : "Unable to process website link right now.");
+    }
   }
 
   redirect("/app/restaurant/onboarding/documents");
@@ -158,7 +172,11 @@ export async function uploadSetupDocumentsAction(formData: FormData) {
 
       if (extractedText) {
         const source = await createTextSource(tenant.id, file.name, extractedText, sourceType);
-        await processSource(source.id);
+        try {
+          await processSource(source.id);
+        } catch (error) {
+          await markSourceNeedsReview(source.id, error instanceof Error ? error.message : "Unable to process image menu right now.");
+        }
       } else {
         await prisma.sourceDocument.create({
           data: {
@@ -192,7 +210,11 @@ export async function uploadSetupDocumentsAction(formData: FormData) {
     }
 
     const source = await createTextSource(tenant.id, file.name, extractedText, sourceType);
-    await processSource(source.id);
+    try {
+      await processSource(source.id);
+    } catch (error) {
+      await markSourceNeedsReview(source.id, error instanceof Error ? error.message : "Unable to process this document right now.");
+    }
   }
 
   redirect("/app/restaurant/onboarding/review");
@@ -226,7 +248,11 @@ export async function publishKnowledgeAction() {
   });
 
   for (const source of pendingSources) {
-    await processSource(source.id);
+    try {
+      await processSource(source.id);
+    } catch (error) {
+      await markSourceNeedsReview(source.id, error instanceof Error ? error.message : "Unable to finish processing this source.");
+    }
   }
 
   await publishKnowledge(tenant.id);

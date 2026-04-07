@@ -69,6 +69,63 @@ function normalizeText(value: string) {
   return value.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function coerceOfferings(raw: unknown) {
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .map((entry) => {
+      if (typeof entry === "string") {
+        return {
+          name: normalizeText(entry).slice(0, 120),
+          description: entry,
+          currency: "USD",
+          metadata: {},
+          confidence: 0.45,
+        };
+      }
+
+      if (!entry || typeof entry !== "object") return null;
+
+      const record = entry as Record<string, unknown>;
+      const name = [record.name, record.title, record.item, record.service]
+        .map((value) => (typeof value === "string" ? normalizeText(value) : ""))
+        .find(Boolean);
+
+      if (!name) return null;
+
+      const rawPrice = record.basePrice ?? record.price ?? record.amount ?? null;
+      const numericPrice = typeof rawPrice === "number"
+        ? rawPrice
+        : typeof rawPrice === "string"
+          ? Number(rawPrice.replace(/[^0-9.]/g, "")) || null
+          : null;
+
+      return {
+        category: typeof record.category === "string" ? normalizeText(record.category) : undefined,
+        name,
+        description: typeof record.description === "string" ? normalizeText(record.description) : undefined,
+        basePrice: numericPrice,
+        currency: typeof record.currency === "string" ? normalizeText(record.currency) : "USD",
+        durationMinutes: typeof record.durationMinutes === "number" ? record.durationMinutes : null,
+        metadata: typeof record.metadata === "object" && record.metadata ? record.metadata : {},
+        confidence: typeof record.confidence === "number" ? record.confidence : 0.5,
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizeStructuredPayload(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
+    return payload;
+  }
+
+  const record = payload as Record<string, unknown>;
+  return {
+    ...record,
+    offerings: coerceOfferings(record.offerings),
+  };
+}
+
 export async function generateStructuredExtraction(input: {
   industry: IndustryType;
   text: string;
@@ -108,7 +165,7 @@ export async function generateStructuredExtraction(input: {
     ],
   });
 
-  const parsed = parseJsonFromText(response.output_text || "");
+  const parsed = normalizeStructuredPayload(parseJsonFromText(response.output_text || ""));
   if (!parsed) {
     throw new Error("Structured extraction response was not valid JSON.");
   }
