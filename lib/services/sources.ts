@@ -1,5 +1,6 @@
 import { ArtifactStatus, ArtifactType, SourceType } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { extractWebsiteText } from "@/lib/ingestion/extract";
 import { generateStructuredExtraction } from "@/lib/llm/service";
 
 function chunkText(text: string, size = 500) {
@@ -30,37 +31,59 @@ export async function createTextSource(tenantId: string, originalName: string, e
   });
 }
 
+async function resolveSourceText(source: { id: string; sourceType: SourceType; extractedText: string | null; sourceUrl: string | null; originalName: string; }) {
+  if (source.sourceType === SourceType.WEBSITE && source.sourceUrl) {
+    const websiteText = await extractWebsiteText(source.sourceUrl);
+    await prisma.sourceDocument.update({
+      where: { id: source.id },
+      data: { extractedText: websiteText, metadataJson: { fetchedAt: new Date().toISOString(), sourceUrl: source.sourceUrl } },
+    });
+    return websiteText;
+  }
+
+  if (source.extractedText?.trim()) {
+    return source.extractedText.trim();
+  }
+
+  return `Source URL: ${source.sourceUrl || source.originalName}`;
+}
+
 export async function processSource(sourceId: string) {
   const source = await prisma.sourceDocument.findUnique({ include: { tenant: true }, where: { id: sourceId } });
   if (!source) throw new Error("Source not found");
 
   await prisma.sourceDocument.update({ where: { id: sourceId }, data: { ingestionStatus: "PROCESSING" } });
 
-  const text = source.extractedText || `Source URL: ${source.sourceUrl || source.originalName}`;
-  const extraction = await generateStructuredExtraction({ industry: source.tenant.industryType, text });
+  try {
+    const text = await resolveSourceText(source);
+    const extraction = await generateStructuredExtraction({ industry: source.tenant.industryType, text });
 
-  await prisma.extractedArtifact.createMany({
-    data: [
-      { tenantId: source.tenantId, sourceDocumentId: source.id, artifactType: ArtifactType.PROFILE, status: ArtifactStatus.DRAFT, confidence: extraction.profile.confidence, dataJson: extraction.profile },
-      ...extraction.offerings.map((item) => ({ tenantId: source.tenantId, sourceDocumentId: source.id, artifactType: ArtifactType.OFFERING, status: ArtifactStatus.DRAFT, confidence: item.confidence, dataJson: item })),
-      ...extraction.faqs.map((item) => ({ tenantId: source.tenantId, sourceDocumentId: source.id, artifactType: ArtifactType.FAQ, status: ArtifactStatus.DRAFT, confidence: item.confidence, dataJson: item })),
-      ...extraction.policies.map((item) => ({ tenantId: source.tenantId, sourceDocumentId: source.id, artifactType: ArtifactType.POLICY, status: ArtifactStatus.DRAFT, confidence: item.confidence, dataJson: item })),
-    ],
-  });
+    await prisma.extractedArtifact.createMany({
+      data: [
+        { tenantId: source.tenantId, sourceDocumentId: source.id, artifactType: ArtifactType.PROFILE, status: ArtifactStatus.DRAFT, confidence: extraction.profile.confidence, dataJson: extraction.profile },
+        ...extraction.offerings.map((item) => ({ tenantId: source.tenantId, sourceDocumentId: source.id, artifactType: ArtifactType.OFFERING, status: ArtifactStatus.DRAFT, confidence: item.confidence, dataJson: item })),
+        ...extraction.faqs.map((item) => ({ tenantId: source.tenantId, sourceDocumentId: source.id, artifactType: ArtifactType.FAQ, status: ArtifactStatus.DRAFT, confidence: item.confidence, dataJson: item })),
+        ...extraction.policies.map((item) => ({ tenantId: source.tenantId, sourceDocumentId: source.id, artifactType: ArtifactType.POLICY, status: ArtifactStatus.DRAFT, confidence: item.confidence, dataJson: item })),
+      ],
+    });
 
-  await prisma.knowledgeChunk.createMany({
-    data: chunkText(text).map((chunk) => ({
-      tenantId: source.tenantId,
-      sourceDocumentId: source.id,
-      chunkText: chunk,
-      metadataJson: { sourceType: source.sourceType },
-      published: false,
-    })),
-  });
+    await prisma.knowledgeChunk.createMany({
+      data: chunkText(text).map((chunk) => ({
+        tenantId: source.tenantId,
+        sourceDocumentId: source.id,
+        chunkText: chunk,
+        metadataJson: { sourceType: source.sourceType },
+        published: false,
+      })),
+    });
 
-  await prisma.sourceDocument.update({ where: { id: source.id }, data: { ingestionStatus: extraction.issues.length ? "NEEDS_REVIEW" : "COMPLETED" } });
+    await prisma.sourceDocument.update({ where: { id: source.id }, data: { ingestionStatus: extraction.issues.length ? "NEEDS_REVIEW" : "COMPLETED" } });
 
-  return extraction;
+    return extraction;
+  } catch (error) {
+    await prisma.sourceDocument.update({ where: { id: source.id }, data: { ingestionStatus: "FAILED" } });
+    throw error;
+  }
 }
 
 export async function publishKnowledge(tenantId: string) {

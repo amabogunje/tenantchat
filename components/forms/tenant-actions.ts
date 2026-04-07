@@ -1,13 +1,15 @@
 "use server";
 
+import { Buffer } from "node:buffer";
 import { redirect } from "next/navigation";
 import { IndustryType, SourceType } from "@prisma/client";
 import { requireSystemAdmin, requireTenantAdminContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { decryptSecret } from "@/lib/security/crypto";
+import { extractDocumentText } from "@/lib/ingestion/extract";
 import { validateTwilioCredentials } from "@/lib/messaging/twilio";
-import { createTextSource, createWebsiteSource, processSource, publishKnowledge } from "@/lib/services/sources";
+import { decryptSecret } from "@/lib/security/crypto";
 import { escalateConversation } from "@/lib/services/conversations";
+import { createTextSource, createWebsiteSource, processSource, publishKnowledge } from "@/lib/services/sources";
 import { updateTenantProfile, upsertChannelConnection } from "@/lib/services/tenant";
 
 export async function saveOnboarding(formData: FormData) {
@@ -155,12 +157,20 @@ export async function uploadSetupDocumentsAction(formData: FormData) {
 
     let extractedText = `${file.name}\n\nUploaded by the restaurant owner during setup. Use this file as supporting source material and flag it for review if details are unclear.`;
 
-    if (sourceType === SourceType.TEXT) {
-      try {
-        extractedText = await file.text();
-      } catch {
-        // Keep the fallback text for text-like documents we could not read in MVP mode.
+    try {
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const parsedText = await extractDocumentText({
+        buffer,
+        filename: file.name,
+        mimeType: file.type,
+        sourceType,
+      });
+
+      if (parsedText) {
+        extractedText = parsedText;
       }
+    } catch {
+      // Keep the fallback text for documents we cannot deeply parse in MVP mode.
     }
 
     const source = await createTextSource(tenant.id, file.name, extractedText, sourceType);
