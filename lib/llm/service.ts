@@ -34,12 +34,42 @@ function heuristicIntent(message: string): IntentResult {
   };
 }
 
+function parseJsonFromText(text: string) {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
+    if (fenced) {
+      try {
+        return JSON.parse(fenced.trim());
+      } catch {
+        // continue
+      }
+    }
+
+    const firstBrace = trimmed.indexOf("{");
+    const lastBrace = trimmed.lastIndexOf("}");
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      try {
+        return JSON.parse(trimmed.slice(firstBrace, lastBrace + 1));
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  }
+}
+
 export async function generateStructuredExtraction(input: {
   industry: IndustryType;
   text: string;
 }): Promise<StructuredExtraction> {
   const client = getOpenAIClient();
-  const prompt = buildExtractionPrompt(getIndustryPack(input.industry).summary, input.text);
+  const prompt = `${buildExtractionPrompt(getIndustryPack(input.industry).summary, input.text)}\n\nReturn valid JSON with this shape only:\n{\n  "profile": {"businessName":"","description":"","phone":"","email":"","website":"","address":"","hours":{},"toneInstructions":"","confidence":0.5,"flags":[]},\n  "offerings": [],\n  "faqs": [],\n  "policies": [],\n  "hours": {},\n  "issues": []\n}`;
   if (!client) {
     return structuredExtractionSchema.parse({
       profile: {
@@ -73,7 +103,12 @@ export async function generateStructuredExtraction(input: {
     ],
   });
 
-  return structuredExtractionSchema.parse(JSON.parse(response.output_text || "{}"));
+  const parsed = parseJsonFromText(response.output_text || "");
+  if (!parsed) {
+    throw new Error("Structured extraction response was not valid JSON.");
+  }
+
+  return structuredExtractionSchema.parse(parsed);
 }
 
 export async function classifyIntent(message: string): Promise<IntentResult> {
@@ -86,7 +121,7 @@ export async function classifyIntent(message: string): Promise<IntentResult> {
     input: [
       {
         role: "system",
-        content: "Classify the customer message into the allowed intent taxonomy and return JSON only.",
+        content: "Classify the customer message into the allowed intent taxonomy and return valid JSON only with keys intent, confidence, rationale.",
       },
       {
         role: "user",
@@ -95,8 +130,9 @@ export async function classifyIntent(message: string): Promise<IntentResult> {
     ],
   });
 
+  const parsed = parseJsonFromText(response.output_text || "");
   try {
-    return intentResultSchema.parse(JSON.parse(response.output_text || "{}"));
+    return intentResultSchema.parse(parsed || {});
   } catch {
     return fallback;
   }
@@ -115,7 +151,7 @@ export async function answerCustomerQuestion(input: {
     answer:
       input.structuredFacts[0] ||
       input.faqs[0] ||
-      "I’m not fully sure from the approved business knowledge yet. I can help connect you to a human.",
+      "I'm not fully sure from the approved business knowledge yet. I can help connect you to a human.",
     confidence: input.structuredFacts.length + input.faqs.length > 0 ? 0.67 : 0.28,
     needsEscalation: input.structuredFacts.length + input.faqs.length === 0,
     needsClarification: false,
@@ -129,20 +165,36 @@ export async function answerCustomerQuestion(input: {
     input: [
       {
         role: "system",
-        content: "Answer customer questions with grounded tenant knowledge and return JSON only.",
+        content: "Answer customer questions with grounded tenant knowledge. Return valid JSON only with keys answer, confidence, needsEscalation, needsClarification, clarificationQuestion, citations.",
       },
       {
         role: "user",
-        content: buildRuntimePrompt(input),
+        content: `${buildRuntimePrompt(input)}\n\nReturn valid JSON like:\n{"answer":"","confidence":0.0,"needsEscalation":false,"needsClarification":false,"clarificationQuestion":"","citations":[]}`,
       },
     ],
   });
 
-  try {
-    return answerResultSchema.parse(JSON.parse(response.output_text || "{}"));
-  } catch {
-    return fallbackAnswer;
+  const parsed = parseJsonFromText(response.output_text || "");
+  if (parsed) {
+    try {
+      return answerResultSchema.parse(parsed);
+    } catch {
+      // fall through to raw-text rescue
+    }
   }
+
+  const rawText = (response.output_text || "").trim();
+  if (rawText) {
+    return answerResultSchema.parse({
+      answer: rawText,
+      confidence: 0.72,
+      needsEscalation: false,
+      needsClarification: false,
+      citations: [],
+    });
+  }
+
+  return fallbackAnswer;
 }
 
 export async function summarizeEscalation(messageHistory: string): Promise<{ summary: string; reason: string }> {
@@ -156,13 +208,14 @@ export async function summarizeEscalation(messageHistory: string): Promise<{ sum
   const response = await client.responses.create({
     model: getOpenAIModel(),
     input: [
-      { role: "system", content: "Summarize the escalation and produce JSON only." },
+      { role: "system", content: "Summarize the escalation and produce valid JSON only with keys summary and reason." },
       { role: "user", content: messageHistory },
     ],
   });
 
+  const parsed = parseJsonFromText(response.output_text || "");
   try {
-    return escalationSummarySchema.parse(JSON.parse(response.output_text || "{}"));
+    return escalationSummarySchema.parse(parsed || {});
   } catch {
     return fallback;
   }
