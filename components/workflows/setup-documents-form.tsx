@@ -1,15 +1,37 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { ArrowLeft, ArrowRight, FileText, Upload } from "lucide-react";
 import { uploadSetupDocumentsAction } from "@/components/forms/tenant-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+type ExistingFile = { id: string; filename: string; status: string; summary: string };
+
+function UploadSubmitButton({ disabled }: { disabled: boolean }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button type="submit" size="lg" disabled={disabled || pending}>
+      {pending ? "Uploading..." : "Next"}
+      <ArrowRight className="size-4" />
+    </Button>
+  );
+}
+
 export function SetupDocumentsForm({
   uploadedFiles,
 }: {
-  uploadedFiles: Array<{ id: string; filename: string; status: string; summary: string }>;
+  uploadedFiles: ExistingFile[];
 }) {
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+
+  const selectedSummary = useMemo(
+    () => selectedFiles.map((file) => ({ name: file.name, size: `${Math.max(1, Math.round(file.size / 1024))} KB` })),
+    [selectedFiles],
+  );
+
   return (
     <div className="space-y-8">
       <div className="space-y-3">
@@ -27,15 +49,39 @@ export function SetupDocumentsForm({
             <CardDescription>Choose one or more files. We&apos;ll fold them into your draft and highlight anything that needs review.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={uploadSetupDocumentsAction} className="space-y-5">
+            <form action={uploadSetupDocumentsAction} encType="multipart/form-data" className="space-y-5">
               <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-[1.5rem] border border-dashed border-border/80 bg-muted/30 px-6 py-12 text-center transition-colors hover:border-primary/40 hover:bg-muted/50">
                 <Upload className="size-6 text-primary" />
                 <div className="space-y-1">
                   <div className="font-medium text-foreground">Drop files here or click to browse</div>
                   <div className="text-sm text-muted-foreground">PDF, DOC, DOCX, JPG, PNG, TXT, and more</div>
                 </div>
-                <input type="file" name="files" multiple className="hidden" />
+                <input
+                  type="file"
+                  name="files"
+                  multiple
+                  accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,.webp,.gif"
+                  className="hidden"
+                  onChange={(event) => setSelectedFiles(Array.from(event.target.files || []))}
+                />
               </label>
+
+              <div className="rounded-2xl border bg-muted/20 p-4 text-sm text-muted-foreground">
+                {selectedSummary.length ? (
+                  <div className="space-y-2">
+                    <div className="font-medium text-foreground">Ready to upload</div>
+                    {selectedSummary.map((file) => (
+                      <div key={file.name} className="flex items-center justify-between gap-3 rounded-xl bg-background px-3 py-2">
+                        <span className="truncate">{file.name}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground">{file.size}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div>Select files first, then click Next.</div>
+                )}
+              </div>
+
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <Button asChild type="button" variant="outline">
                   <a href="/app/restaurant/onboarding">
@@ -43,10 +89,7 @@ export function SetupDocumentsForm({
                     Back
                   </a>
                 </Button>
-                <Button type="submit" size="lg">
-                  Next
-                  <ArrowRight className="size-4" />
-                </Button>
+                <UploadSubmitButton disabled={!selectedFiles.length} />
               </div>
             </form>
           </CardContent>

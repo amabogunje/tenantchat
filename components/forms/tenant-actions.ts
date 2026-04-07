@@ -76,6 +76,10 @@ export async function addWebsiteSourceAction(formData: FormData) {
   redirect("/app/restaurant/setup");
 }
 
+function isUploadedFile(value: FormDataEntryValue): value is File {
+  return typeof value === "object" && value !== null && "size" in value && "name" in value && typeof (value as File).size === "number";
+}
+
 function inferSourceType(filename: string, mimeType: string) {
   const name = filename.toLowerCase();
   const mime = mimeType.toLowerCase();
@@ -126,7 +130,11 @@ export async function uploadSetupDocumentsAction(formData: FormData) {
   const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-up");
 
-  const files = formData.getAll("files").filter((value): value is File => value instanceof File && value.size > 0);
+  const files = formData.getAll("files").filter((value): value is File => isUploadedFile(value) && value.size > 0);
+
+  if (!files.length) {
+    redirect("/app/restaurant/onboarding/documents");
+  }
 
   for (const file of files) {
     const sourceType = inferSourceType(file.name, file.type);
@@ -145,11 +153,14 @@ export async function uploadSetupDocumentsAction(formData: FormData) {
       continue;
     }
 
-    let extractedText = "";
-    try {
-      extractedText = await file.text();
-    } catch {
-      extractedText = `${file.name}\n\nUploaded by the restaurant owner during setup. Use this file as supporting source material and flag it for review if details are unclear.`;
+    let extractedText = `${file.name}\n\nUploaded by the restaurant owner during setup. Use this file as supporting source material and flag it for review if details are unclear.`;
+
+    if (sourceType === SourceType.TEXT) {
+      try {
+        extractedText = await file.text();
+      } catch {
+        // Keep the fallback text for text-like documents we could not read in MVP mode.
+      }
     }
 
     const source = await createTextSource(tenant.id, file.name, extractedText, sourceType);
