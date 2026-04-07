@@ -13,6 +13,31 @@ export default async function MenuPage() {
   const workspace = getVerticalWorkspaceData(tenant);
   if (!workspace) redirect("/app");
 
+  if (workspace.mode === "starter") {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="Menu and Services"
+          title="Your menu will show up here"
+          description="Upload a menu or add a few items when you're ready. We will organize categories, prices, dietary tags, takeout, and catering for you."
+          actions={<Button asChild><a href="/app/restaurant/setup">Add menu materials</a></Button>}
+        />
+        <Card>
+          <CardHeader>
+            <CardTitle>What we can build for you</CardTitle>
+            <CardDescription>Once you upload a menu, this page becomes the easiest place to keep it current.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-2 text-sm text-muted-foreground">
+            <div className="rounded-2xl border p-4">Menu categories and items</div>
+            <div className="rounded-2xl border p-4">Prices and descriptions</div>
+            <div className="rounded-2xl border p-4">Dietary tags and options</div>
+            <div className="rounded-2xl border p-4">Takeout and catering availability</div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -25,7 +50,7 @@ export default async function MenuPage() {
         <Card>
           <CardHeader>
             <CardTitle>Menu items</CardTitle>
-            <CardDescription>We found {workspace.menuItems.length} core items from your uploaded materials. Edit what you need, then move on.</CardDescription>
+            <CardDescription>We found {workspace.menuItems.length} core items from your uploaded materials.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {workspace.menuCategories.map((category) => (
@@ -42,7 +67,6 @@ export default async function MenuPage() {
                           <div className="font-medium">{item.name}</div>
                           {item.soldOutToday ? <Badge variant="warning">Sold out today</Badge> : null}
                           {item.seasonal ? <Badge>Seasonal</Badge> : null}
-                          {!item.available ? <Badge variant="destructive">Unavailable</Badge> : null}
                         </div>
                         <p className="mt-2 text-sm text-muted-foreground">{item.description}</p>
                         <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
@@ -80,18 +104,6 @@ export default async function MenuPage() {
                   <div className="mt-3 text-sm text-muted-foreground">Starting at ${item.basePrice} | {item.pricingModel} | {item.minGuests}-{item.maxGuests} guests</div>
                 </div>
               ))}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick availability controls</CardTitle>
-              <CardDescription>Small changes that should reflect in WhatsApp right away.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <div>Mark an item unavailable</div>
-              <div>Set a sold out item for today</div>
-              <div>Disable takeout on a busy day</div>
-              <div>Pause a catering package for a specific date</div>
             </CardContent>
           </Card>
         </div>

@@ -12,6 +12,32 @@ export default async function CustomerQuestionsPage() {
   const workspace = getVerticalWorkspaceData(tenant);
   if (!workspace) redirect("/app");
 
+  if (workspace.mode === "starter") {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="Customer Questions"
+          title="Answer review will show up here"
+          description="Once we process your website or menu, we will draft common customer questions and show you exactly how the assistant plans to answer them."
+          actions={<Button asChild><a href="/app/restaurant/preview">Open preview</a></Button>}
+        />
+        <Card>
+          <CardHeader>
+            <CardTitle>What you will be able to review</CardTitle>
+            <CardDescription>Plain-English answers with confidence and source references.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <div>Do you take reservations?</div>
+            <div>Do you offer catering?</div>
+            <div>Do you have vegetarian or vegan options?</div>
+            <div>Can I order takeout?</div>
+            <div>Do you have parking?</div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -39,7 +65,6 @@ export default async function CustomerQuestionsPage() {
               <div className="mt-4 flex flex-wrap gap-3">
                 <Button variant="outline" size="sm">Edit answer</Button>
                 <Button variant="outline" size="sm">Flag for escalation</Button>
-                <Button variant="outline" size="sm">Override reply</Button>
               </div>
             </div>
           ))}
@@ -55,7 +80,6 @@ export default async function CustomerQuestionsPage() {
             <div key={suggestion.id} className="rounded-2xl border p-4">
               <div className="font-medium">{suggestion.title}</div>
               <div className="mt-1 text-sm text-muted-foreground">{suggestion.description}</div>
-              <div className="mt-3 text-xs text-muted-foreground">Frequency: {suggestion.frequency} recent mentions</div>
             </div>
           ))}
         </CardContent>

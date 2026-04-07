@@ -14,6 +14,48 @@ export default async function RestaurantOverviewPage() {
   const workspace = getVerticalWorkspaceData(tenant);
   if (!workspace) redirect("/app");
 
+  if (workspace.mode === "starter") {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="Overview"
+          title="Let's get your assistant ready"
+          description="You do not need to build this from scratch. Start with your basics, upload what you already have, and we will guide you through the rest."
+          actions={<Button asChild><Link href="/app/restaurant/onboarding">Start setup</Link></Button>}
+        />
+        <section className="grid gap-4 md:grid-cols-3">
+          <StatusCard label="Assistant status" value="Draft" detail="Not live yet" />
+          <StatusCard label="What we found" value="0 details" detail="We have not processed your materials yet" />
+          <StatusCard label="Needs review" value="0" detail="Nothing to review until setup begins" />
+        </section>
+        <Card>
+          <CardHeader>
+            <CardTitle>Start here</CardTitle>
+            <CardDescription>A simple, non-technical setup flow for restaurant owners.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-2">
+            <a href="/app/restaurant/onboarding" className="rounded-2xl border p-4 hover:bg-muted">
+              <div className="font-medium">1. Add your basics</div>
+              <div className="mt-1 text-sm text-muted-foreground">Restaurant name, website, phone, and address.</div>
+            </a>
+            <a href="/app/restaurant/setup" className="rounded-2xl border p-4 hover:bg-muted">
+              <div className="font-medium">2. Upload your menu and files</div>
+              <div className="mt-1 text-sm text-muted-foreground">Menus, flyers, brochures, PDFs, and notes.</div>
+            </a>
+            <a href="/app/restaurant/preview" className="rounded-2xl border p-4 hover:bg-muted">
+              <div className="font-medium">3. Preview the assistant</div>
+              <div className="mt-1 text-sm text-muted-foreground">See sample chats before you go live.</div>
+            </a>
+            <a href="/app/restaurant/profile" className="rounded-2xl border p-4 hover:bg-muted">
+              <div className="font-medium">4. Confirm your details</div>
+              <div className="mt-1 text-sm text-muted-foreground">Hours, reservations, takeout, and catering.</div>
+            </a>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -67,4 +109,3 @@ export default async function RestaurantOverviewPage() {
     </div>
   );
 }
-

@@ -13,6 +13,45 @@ export default async function RestaurantSetupPage() {
   const workspace = getVerticalWorkspaceData(tenant);
   if (!workspace) redirect("/app");
 
+  if (workspace.mode === "starter") {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="Setup"
+          title="Add your website and the files you already use"
+          description="Keep this simple. Start with your website if you have one, then upload menus, PDFs, flyers, or notes. Once we process them, we will show you exactly what we found."
+          actions={<Button asChild><Link href="/app/restaurant/onboarding">Open guided setup</Link></Button>}
+        />
+        <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
+          <Card>
+            <CardHeader>
+              <CardTitle>What to add</CardTitle>
+              <CardDescription>You do not need to fill in everything manually.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <div className="rounded-2xl border p-4">Website URL</div>
+              <div className="rounded-2xl border p-4">Menu PDF or photo</div>
+              <div className="rounded-2xl border p-4">Catering flyer or brochure</div>
+              <div className="rounded-2xl border p-4">Takeout or reservation notes</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>What happens next</CardTitle>
+              <CardDescription>The system does the hard work for you.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <div>We find your hours, address, and phone</div>
+              <div>We extract menu items, prices, and dietary tags</div>
+              <div>We look for reservation, takeout, and catering details</div>
+              <div>We show you only the things that need your review</div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader

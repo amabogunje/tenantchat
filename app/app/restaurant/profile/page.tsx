@@ -19,77 +19,61 @@ export default async function RestaurantProfilePage() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="Restaurant Profile"
-        title="Keep the basics accurate"
-        description="These are the details your guests rely on most. We prefilled them from your materials so you can review instead of starting from scratch."
+        title={workspace.mode === "starter" ? "Add the basics guests need most" : "Keep the basics accurate"}
+        description={workspace.mode === "starter" ? "Start with your name, phone, address, website, and hours. You can keep everything else light for now." : "These are the details your guests rely on most. We prefilled them from your materials so you can review instead of starting from scratch."}
         actions={<Button>Save changes</Button>}
       />
       <div className="grid gap-6 xl:grid-cols-[1.25fr,0.75fr]">
         <Card>
           <CardHeader>
             <CardTitle>Business details</CardTitle>
-            <CardDescription>Simple, structured facts for everyday customer questions.</CardDescription>
+            <CardDescription>Simple facts guests ask about every day.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="grid gap-2 md:col-span-2"><Label>Restaurant name</Label><Input defaultValue={profile.businessName} /></div>
-            <div className="grid gap-2 md:col-span-2"><Label>Short description</Label><Textarea defaultValue={profile.businessDescription} /></div>
-            <div className="grid gap-2"><Label>Cuisine type</Label><Input defaultValue={profile.cuisineType} /></div>
-            <div className="grid gap-2"><Label>Phone</Label><Input defaultValue={profile.phone} /></div>
-            <div className="grid gap-2 md:col-span-2"><Label>Address</Label><Input defaultValue={profile.address} /></div>
+            <div className="grid gap-2 md:col-span-2"><Label>Short description</Label><Textarea defaultValue={profile.businessDescription} placeholder="What kind of food and experience do you offer?" /></div>
+            <div className="grid gap-2"><Label>Cuisine type</Label><Input defaultValue={profile.cuisineType} placeholder="For example: Mexican, Italian, brunch" /></div>
+            <div className="grid gap-2"><Label>Phone</Label><Input defaultValue={profile.phone} placeholder="(555) 123-4567" /></div>
+            <div className="grid gap-2 md:col-span-2"><Label>Address</Label><Input defaultValue={profile.address} placeholder="Street address" /></div>
             <div className="grid gap-2"><Label>City</Label><Input defaultValue={profile.city} /></div>
             <div className="grid gap-2"><Label>State</Label><Input defaultValue={profile.state} /></div>
             <div className="grid gap-2"><Label>ZIP</Label><Input defaultValue={profile.zip} /></div>
-            <div className="grid gap-2"><Label>Email</Label><Input defaultValue={profile.email} /></div>
-            <div className="grid gap-2"><Label>Website</Label><Input defaultValue={profile.website} /></div>
-            <div className="grid gap-2"><Label>Parking info</Label><Textarea defaultValue={profile.parkingInfo} /></div>
-            <div className="grid gap-2"><Label>Service area</Label><Textarea defaultValue={profile.serviceArea} /></div>
+            <div className="grid gap-2"><Label>Email</Label><Input defaultValue={profile.email} placeholder="Optional" /></div>
+            <div className="grid gap-2"><Label>Website</Label><Input defaultValue={profile.website} placeholder="https://..." /></div>
           </CardContent>
         </Card>
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Regular hours</CardTitle>
-              <CardDescription>We found your weekly schedule.</CardDescription>
+              <CardTitle>{workspace.mode === "starter" ? "Hours" : "Regular hours"}</CardTitle>
+              <CardDescription>{workspace.mode === "starter" ? "Add your normal opening hours. Holiday hours can come later." : "We found your weekly schedule."}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              {profile.regularHours.map((row) => (
+              {profile.regularHours.length ? profile.regularHours.map((row) => (
                 <div key={row.day} className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
                   <span>{row.day}</span>
                   <span className="text-muted-foreground">{row.open} - {row.close}</span>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Holiday hours and closures</CardTitle>
-              <CardDescription>Temporary schedule changes guests should trust.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              {profile.holidayHours.map((row) => (
-                <div key={row.date} className="rounded-2xl bg-muted/60 px-4 py-3">{row.label}: {row.hours}</div>
-              ))}
-              {profile.temporaryClosures.map((row) => (
-                <div key={row.date} className="rounded-2xl bg-muted/60 px-4 py-3">Closed {row.date}: {row.reason}</div>
-              ))}
+              )) : <div className="rounded-2xl border p-4 text-muted-foreground">No hours added yet.</div>}
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
               <CardTitle>Guest services</CardTitle>
-              <CardDescription>Reservation, takeout, and catering preferences.</CardDescription>
+              <CardDescription>{workspace.mode === "starter" ? "A simple start is enough. Turn these on when you're ready." : "Reservation, takeout, and catering preferences."}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-muted-foreground">
               <div>
                 <div className="font-medium text-foreground">Reservations</div>
-                <p>{profile.reservationInstructions}</p>
+                <p>{profile.reservationInstructions || "Not set yet"}</p>
               </div>
               <div>
                 <div className="font-medium text-foreground">Takeout</div>
-                <p>{profile.takeoutInstructions}</p>
+                <p>{profile.takeoutInstructions || "Not set yet"}</p>
               </div>
               <div>
                 <div className="font-medium text-foreground">Catering</div>
-                <p>{profile.cateringInstructions}</p>
+                <p>{profile.cateringInstructions || "Not set yet"}</p>
               </div>
             </CardContent>
           </Card>

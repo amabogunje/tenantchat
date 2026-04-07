@@ -42,6 +42,7 @@ export type ExtractionSummary = {
 
 export type RestaurantWorkspaceData = {
   verticalKey: "restaurant";
+  mode: "starter" | "demo";
   assistantStatus: "draft" | "needs_review" | "live";
   profile: RestaurantProfile;
   menuCategories: MenuCategory[];
@@ -70,22 +71,113 @@ export type RestaurantWorkspaceData = {
   notifications: Array<{ title: string; detail: string }>;
 };
 
+const demoTenantSlugs = new Set(["rivera-kitchen", "northside-barber", "atlas-auto-care"]);
+
 function menuRefs(prefix: string) {
   return [`${prefix} menu PDF`, `${prefix} website menu section`];
 }
 
-export function getRestaurantWorkspaceData(tenant: Tenant): RestaurantWorkspaceData {
-  const lowerName = tenant.name.toLowerCase();
-  const cuisineType = lowerName.includes("rivera") ? "Contemporary Latin" : "Neighborhood Restaurant";
-  const businessName = tenant.name;
-  const assistantStatus = tenant.status === "ACTIVE" ? "live" : "needs_review";
+function buildStarterProfile(tenant: Tenant): RestaurantProfile {
+  return {
+    id: `${tenant.id}-profile`,
+    tenantId: tenant.id,
+    businessName: tenant.name,
+    businessDescription: "",
+    cuisineType: "",
+    address: "",
+    city: "",
+    state: "",
+    zip: "",
+    phone: "",
+    email: "",
+    website: "",
+    timezone: "America/New_York",
+    regularHours: [],
+    holidayHours: [],
+    temporaryClosures: [],
+    reservationEnabled: false,
+    reservationInstructions: "",
+    reservationMethod: "",
+    reservationLink: "",
+    takeoutEnabled: false,
+    takeoutInstructions: "",
+    takeoutMethod: "",
+    takeoutLink: "",
+    cateringEnabled: false,
+    cateringInstructions: "",
+    cateringContactMethod: "",
+    parkingInfo: "",
+    socialLinks: [],
+    serviceArea: "",
+    status: "draft",
+  };
+}
 
+function buildStarterWorkspace(tenant: Tenant): RestaurantWorkspaceData {
+  return {
+    verticalKey: "restaurant",
+    mode: "starter",
+    assistantStatus: "draft",
+    profile: buildStarterProfile(tenant),
+    menuCategories: [],
+    menuItems: [],
+    cateringPackages: [],
+    faqs: [],
+    dailyUpdates: [],
+    uploadedArtifacts: [],
+    reviewItems: [],
+    conversations: [],
+    extractionSummary: {
+      hoursFound: false,
+      addressFound: false,
+      phoneFound: false,
+      menuItemsFound: 0,
+      cateringServicesFound: 0,
+      reservationDetailsFound: false,
+      takeoutDetailsFound: false,
+      itemsNeedingReview: 0,
+    },
+    previewAnswers: restaurantVertical.previewQuestions.map((item) => ({
+      id: item.id,
+      prompt: item.prompt,
+      intent: item.intent,
+      confidence: 0.24,
+      sourceRefs: [],
+      response: "Once you add your website, menu, and service details, we'll show a realistic preview answer here.",
+      actions: [],
+    })),
+    learningSuggestions: [],
+    analytics: {
+      conversationVolume: 0,
+      autoAnswerRate: 0,
+      escalations: 0,
+      unansweredTopics: [],
+      topQuestions: [],
+      topMenuItemInquiries: [],
+      reservationTrend: 0,
+      takeoutTrend: 0,
+      cateringTrend: 0,
+    },
+    quickActions: [
+      { label: "Start setup", href: "/app/restaurant/onboarding" },
+      { label: "Add business details", href: "/app/restaurant/profile" },
+      { label: "Upload materials", href: "/app/restaurant/setup" },
+      { label: "Preview assistant", href: "/app/restaurant/preview" },
+    ],
+    notifications: [
+      { title: "Start with the basics", detail: "Add your website, phone, and address so we can begin building your assistant." },
+    ],
+  };
+}
+
+function buildDemoWorkspace(tenant: Tenant): RestaurantWorkspaceData {
+  const businessName = tenant.name;
   const profile: RestaurantProfile = {
     id: `${tenant.id}-profile`,
     tenantId: tenant.id,
     businessName,
     businessDescription: `${businessName} helps guests with reservations, takeout, catering, and everyday menu questions through WhatsApp.`,
-    cuisineType,
+    cuisineType: "Contemporary Latin",
     address: "12 Market Street",
     city: "Brooklyn",
     state: "NY",
@@ -124,7 +216,7 @@ export function getRestaurantWorkspaceData(tenant: Tenant): RestaurantWorkspaceD
       { label: "TikTok", url: "https://tiktok.com/@riverakitchen" },
     ],
     serviceArea: "Brooklyn and lower Manhattan for catering deliveries.",
-    status: assistantStatus,
+    status: "live",
   };
 
   const menuCategories: MenuCategory[] = [
@@ -203,20 +295,6 @@ export function getRestaurantWorkspaceData(tenant: Tenant): RestaurantWorkspaceD
       confidence: 0.86,
       sourceRefs: ["Catering brochure page 2"],
     },
-    {
-      id: "catpack-2",
-      tenantId: tenant.id,
-      name: "Celebration buffet",
-      description: "Buffet-style setup with two mains, three sides, and dessert for larger groups.",
-      pricingModel: "starting-price",
-      basePrice: 550,
-      minGuests: 25,
-      maxGuests: 80,
-      availabilityRules: "Weekend catering subject to availability.",
-      notes: "Final quote depends on staffing and rentals.",
-      confidence: 0.8,
-      sourceRefs: ["Catering brochure page 4", "Owner note"],
-    },
   ];
 
   const faqs: FAQEntry[] = [
@@ -236,31 +314,9 @@ export function getRestaurantWorkspaceData(tenant: Tenant): RestaurantWorkspaceD
       tenantId: tenant.id,
       category: "Dietary",
       question: "Do you have vegan options?",
-      answer: "Yes. Guests usually ask about our charred cauliflower tacos, seasonal vegetable bowl, and dairy-free side options.",
+      answer: "Yes. Guests usually ask about our charred cauliflower tacos and seasonal vegetable bowl.",
       confidence: 0.87,
       sourceRefs: ["Menu PDF page 1", "Chef note"],
-      editable: true,
-      escalationRequired: false,
-    },
-    {
-      id: "faq-3",
-      tenantId: tenant.id,
-      category: "Catering",
-      question: "Do you offer catering?",
-      answer: "Yes. We offer office lunch spreads and larger celebration packages. We usually recommend at least 48 hours notice.",
-      confidence: 0.83,
-      sourceRefs: ["Catering brochure page 2"],
-      editable: true,
-      escalationRequired: false,
-    },
-    {
-      id: "faq-4",
-      tenantId: tenant.id,
-      category: "Parking",
-      question: "Do you have parking?",
-      answer: "There is nearby street parking plus a public garage on State Street after 5 PM.",
-      confidence: 0.61,
-      sourceRefs: ["Owner note"],
       editable: true,
       escalationRequired: false,
     },
@@ -286,15 +342,6 @@ export function getRestaurantWorkspaceData(tenant: Tenant): RestaurantWorkspaceD
       extractionSummary: "Menu uploaded. We found 42 menu items and 7 dietary tags.",
       uploadedAt: "2026-04-06T09:03:00.000Z",
     },
-    {
-      id: "art-3",
-      tenantId: tenant.id,
-      type: "brochure",
-      filename: "catering-brochure.pdf",
-      processingStatus: "needs_review",
-      extractionSummary: "We found 3 catering details that need confirmation.",
-      uploadedAt: "2026-04-06T09:06:00.000Z",
-    },
   ];
 
   const reviewItems: ExtractionReviewItem[] = [
@@ -311,17 +358,6 @@ export function getRestaurantWorkspaceData(tenant: Tenant): RestaurantWorkspaceD
     },
     {
       id: "rev-2",
-      tenantId: tenant.id,
-      entityType: "MenuItem",
-      fieldName: "Celebration buffet starting price",
-      proposedValue: "$550 starting price",
-      confidence: 0.72,
-      sourceRef: "Catering brochure page 4",
-      reviewStatus: "needs_review",
-      reason: "Pricing should be confirmed before going live",
-    },
-    {
-      id: "rev-3",
       tenantId: tenant.id,
       entityType: "FAQEntry",
       fieldName: "Parking answer",
@@ -349,7 +385,7 @@ export function getRestaurantWorkspaceData(tenant: Tenant): RestaurantWorkspaceD
       intent: "dietary_question",
       confidence: 0.88,
       sourceRefs: ["Menu PDF page 1", "Chef note"],
-      response: "Yes. We currently have vegan-friendly options including the charred cauliflower tacos and a seasonal vegetable bowl. If you'd like, I can point you to the best takeout choices too.",
+      response: "Yes. We currently have vegan-friendly options including the charred cauliflower tacos and a seasonal vegetable bowl.",
       actions: [],
     },
     {
@@ -357,8 +393,8 @@ export function getRestaurantWorkspaceData(tenant: Tenant): RestaurantWorkspaceD
       prompt: restaurantVertical.previewQuestions[2].prompt,
       intent: "catering_inquiry",
       confidence: 0.79,
-      sourceRefs: ["Catering brochure page 2", "Catering brochure page 4"],
-      response: "Yes, we offer catering for groups that size. Our office lunch spread starts at 20 guests, and I can help capture your date, headcount, and event details for a follow-up quote.",
+      sourceRefs: ["Catering brochure page 2"],
+      response: "Yes, we offer catering for groups that size. I can help capture your date, headcount, and event details for a follow-up quote.",
       actions: ["submit_catering_request"],
     },
   ];
@@ -373,7 +409,6 @@ export function getRestaurantWorkspaceData(tenant: Tenant): RestaurantWorkspaceD
       detectedIntent: "menu_question",
       resolvedBy: "assistant",
       confidence: 0.9,
-      escalationReason: undefined,
       customerName: "Mia",
       customerMessage: "Do you have vegan options?",
       assistantReply: previewAnswers[1].response,
@@ -394,21 +429,6 @@ export function getRestaurantWorkspaceData(tenant: Tenant): RestaurantWorkspaceD
       assistantReply: "We do offer larger catering packages. I can collect your details and have the team follow up with pricing and availability.",
       sourceRefs: ["Catering brochure page 4"],
     },
-    {
-      id: "conv-3",
-      tenantId: tenant.id,
-      channel: "WhatsApp",
-      startedAt: "2026-04-07T13:30:00.000Z",
-      status: "unresolved",
-      detectedIntent: "location_question",
-      resolvedBy: "pending",
-      confidence: 0.49,
-      escalationReason: undefined,
-      customerName: "Chris",
-      customerMessage: "Is there parking nearby for dinner tonight?",
-      assistantReply: "I found a note about street parking and a nearby garage, but I would like the team to confirm it for tonight.",
-      sourceRefs: ["Owner note"],
-    },
   ];
 
   const dailyUpdates: DailyUpdate[] = [
@@ -422,15 +442,6 @@ export function getRestaurantWorkspaceData(tenant: Tenant): RestaurantWorkspaceD
       relatedMenuItemId: "item-3",
       active: true,
     },
-    {
-      id: "du-2",
-      tenantId: tenant.id,
-      type: "promotion",
-      effectiveDate: "2026-04-07",
-      expiresAt: "2026-04-07T22:00:00.000Z",
-      message: "Happy hour agua fresca add-on with any takeout bowl after 3 PM.",
-      active: true,
-    },
   ];
 
   const learningSuggestions: LearningSuggestion[] = [
@@ -440,48 +451,12 @@ export function getRestaurantWorkspaceData(tenant: Tenant): RestaurantWorkspaceD
       description: "Customers asked about parking 5 times this week. The answer still depends on a low-confidence owner note.",
       frequency: 5,
     },
-    {
-      id: "ls-2",
-      title: "Clarify large-group reservations",
-      description: "Three guests asked whether large groups can reserve online or need a direct follow-up.",
-      frequency: 3,
-    },
   ];
-
-  const extractionSummary: ExtractionSummary = {
-    hoursFound: true,
-    addressFound: true,
-    phoneFound: true,
-    menuItemsFound: 42,
-    cateringServicesFound: 2,
-    reservationDetailsFound: true,
-    takeoutDetailsFound: true,
-    itemsNeedingReview: reviewItems.length,
-  };
-
-  const analytics = {
-    conversationVolume: 124,
-    autoAnswerRate: 82,
-    escalations: 9,
-    unansweredTopics: ["Parking availability", "Large event staffing", "Late-night takeout cutoff"],
-    topQuestions: [
-      { label: "Do you take reservations?", count: 28 },
-      { label: "Do you have vegan options?", count: 22 },
-      { label: "Do you offer catering?", count: 16 },
-    ],
-    topMenuItemInquiries: [
-      { label: "Charred cauliflower tacos", count: 14 },
-      { label: "Family taco dinner", count: 12 },
-      { label: "Citrus grilled chicken bowl", count: 9 },
-    ],
-    reservationTrend: 18,
-    takeoutTrend: 26,
-    cateringTrend: 11,
-  };
 
   return {
     verticalKey: "restaurant",
-    assistantStatus,
+    mode: "demo",
+    assistantStatus: "live",
     profile,
     menuCategories,
     menuItems,
@@ -491,10 +466,35 @@ export function getRestaurantWorkspaceData(tenant: Tenant): RestaurantWorkspaceD
     uploadedArtifacts,
     reviewItems,
     conversations,
-    extractionSummary,
+    extractionSummary: {
+      hoursFound: true,
+      addressFound: true,
+      phoneFound: true,
+      menuItemsFound: 42,
+      cateringServicesFound: 1,
+      reservationDetailsFound: true,
+      takeoutDetailsFound: true,
+      itemsNeedingReview: reviewItems.length,
+    },
     previewAnswers,
     learningSuggestions,
-    analytics,
+    analytics: {
+      conversationVolume: 124,
+      autoAnswerRate: 82,
+      escalations: 9,
+      unansweredTopics: ["Parking availability", "Large event staffing"],
+      topQuestions: [
+        { label: "Do you take reservations?", count: 28 },
+        { label: "Do you have vegan options?", count: 22 },
+      ],
+      topMenuItemInquiries: [
+        { label: "Charred cauliflower tacos", count: 14 },
+        { label: "Family taco dinner", count: 12 },
+      ],
+      reservationTrend: 18,
+      takeoutTrend: 26,
+      cateringTrend: 11,
+    },
     quickActions: [
       { label: "Review setup", href: "/app/restaurant/setup" },
       { label: "Update hours", href: "/app/restaurant/profile" },
@@ -502,8 +502,12 @@ export function getRestaurantWorkspaceData(tenant: Tenant): RestaurantWorkspaceD
       { label: "Preview assistant", href: "/app/restaurant/preview" },
     ],
     notifications: [
-      { title: "We found 3 things that need your review", detail: "They are mostly catering pricing and parking details." },
+      { title: "We found 2 things that need your review", detail: "They are mostly schedule and parking details." },
       { title: "Customers may ask about parking tonight", detail: "This came up repeatedly in recent chats." },
     ],
   };
+}
+
+export function getRestaurantWorkspaceData(tenant: Tenant): RestaurantWorkspaceData {
+  return demoTenantSlugs.has(tenant.slug) ? buildDemoWorkspace(tenant) : buildStarterWorkspace(tenant);
 }

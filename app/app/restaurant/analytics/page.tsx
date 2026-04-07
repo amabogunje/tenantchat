@@ -11,6 +11,34 @@ export default async function RestaurantAnalyticsPage() {
   const workspace = getVerticalWorkspaceData(tenant);
   if (!workspace) redirect("/app");
 
+  if (workspace.mode === "starter") {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="Analytics"
+          title="Useful trends will show up here later"
+          description="Once guests start messaging your assistant, we will keep analytics simple and focused on what helps you improve."
+        />
+        <section className="grid gap-4 md:grid-cols-3">
+          <StatusCard label="Conversation volume" value={0} />
+          <StatusCard label="Auto-answer rate" value="0%" />
+          <StatusCard label="Escalations" value={0} />
+        </section>
+        <Card>
+          <CardHeader>
+            <CardTitle>What you will learn</CardTitle>
+            <CardDescription>No noisy dashboard, just meaningful restaurant signals.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-muted-foreground">
+            <div>What customers ask most often</div>
+            <div>Where your assistant needs a human handoff</div>
+            <div>Top menu, reservation, takeout, and catering questions</div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
