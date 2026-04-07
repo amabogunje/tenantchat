@@ -8,16 +8,17 @@ import { getVerticalWorkspaceData } from "@/lib/services/vertical-workspace";
 export default async function RestaurantUpdatesPage() {
   const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-in");
-  const workspace = getVerticalWorkspaceData(tenant);
+  const workspace = await getVerticalWorkspaceData(tenant);
   if (!workspace) redirect("/app");
+  if (workspace.mode === "starter") redirect("/app/restaurant/onboarding");
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Today's Updates"
-        title={workspace.mode === "starter" ? "Quick changes will be easy here" : "Make quick daily changes without the hassle"}
-        description={workspace.mode === "starter" ? "When your assistant is live, this is where you will quickly mark sold out items, changed hours, closures, and promotions." : "Busy nights happen. Mark sold out items, change hours, pause takeout, or post a special note in seconds."}
-        actions={<Button>{workspace.mode === "starter" ? "Save changes later" : "Save today's changes"}</Button>}
+        title="Make quick daily changes without the hassle"
+        description="Busy nights happen. Mark sold out items, change hours, pause takeout, or post a special note in seconds."
+        actions={<Button>Save today's changes</Button>}
       />
       <div className="grid gap-6 xl:grid-cols-[0.95fr,1.05fr]">
         <Card>
@@ -37,8 +38,8 @@ export default async function RestaurantUpdatesPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>{workspace.mode === "starter" ? "Nothing active yet" : "Active updates"}</CardTitle>
-            <CardDescription>{workspace.mode === "starter" ? "Daily updates appear after you start using the assistant." : "What customers should hear right now."}</CardDescription>
+            <CardTitle>Active updates</CardTitle>
+            <CardDescription>What customers should hear right now.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {workspace.dailyUpdates.length ? workspace.dailyUpdates.map((update) => (

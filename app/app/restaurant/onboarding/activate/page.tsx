@@ -9,8 +9,9 @@ import { getVerticalWorkspaceData } from "@/lib/services/vertical-workspace";
 export default async function OnboardingActivatePage() {
   const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-in");
-  const workspace = getVerticalWorkspaceData(tenant);
+  const workspace = await getVerticalWorkspaceData(tenant);
   if (!workspace) redirect("/app");
+  if (workspace.mode === "starter") redirect("/app/restaurant/onboarding/review");
 
   return (
     <div className="space-y-6">

@@ -8,32 +8,9 @@ import { getVerticalWorkspaceData } from "@/lib/services/vertical-workspace";
 export default async function RestaurantConversationsPage() {
   const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-in");
-  const workspace = getVerticalWorkspaceData(tenant);
+  const workspace = await getVerticalWorkspaceData(tenant);
   if (!workspace) redirect("/app");
-
-  if (workspace.mode === "starter") {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          eyebrow="Conversations"
-          title="Guest conversations will appear here"
-          description="Once your assistant is live and connected, you will be able to monitor what it answered, where confidence was low, and what guests keep asking about."
-        />
-        <Card>
-          <CardHeader>
-            <CardTitle>What this page will help you do</CardTitle>
-            <CardDescription>Simple monitoring, not support-ops overload.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <div>See recent customer messages</div>
-            <div>Spot low-confidence answers</div>
-            <div>See what escalated to a human</div>
-            <div>Turn repeated questions into better FAQs</div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  if (workspace.mode === "starter") redirect("/app/restaurant/onboarding");
 
   return (
     <div className="space-y-6">

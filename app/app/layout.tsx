@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requireTenantAdminContext } from "@/lib/auth/session";
-import { getTenantVertical } from "@/lib/services/vertical-workspace";
+import { getTenantVertical, getVerticalWorkspaceData } from "@/lib/services/vertical-workspace";
 import { AppShell } from "@/components/shell/app-shell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -8,6 +8,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!tenant) redirect("/sign-in");
 
   const vertical = getTenantVertical(tenant);
+  const workspace = await getVerticalWorkspaceData(tenant);
+
   if (!vertical) {
     return (
       <div className="mx-auto max-w-3xl px-6 py-20">
@@ -17,6 +19,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </div>
     );
+  }
+
+  if (tenant.status !== "ACTIVE" || workspace?.mode === "starter") {
+    return <>{children}</>;
   }
 
   return <AppShell vertical={vertical} businessName={tenant.name} status={tenant.status === "ACTIVE" ? "live" : "needs_review"}>{children}</AppShell>;

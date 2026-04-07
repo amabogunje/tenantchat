@@ -11,7 +11,7 @@ import { getTenantVertical, getVerticalWorkspaceData } from "@/lib/services/vert
 export default async function RestaurantSettingsPage() {
   const { tenant, user } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-in");
-  const workspace = getVerticalWorkspaceData(tenant);
+  const workspace = await getVerticalWorkspaceData(tenant);
   const vertical = getTenantVertical(tenant);
   if (!workspace || !vertical) redirect("/app");
 
@@ -33,7 +33,7 @@ export default async function RestaurantSettingsPage() {
             <div className="grid gap-2"><Label>Owner name</Label><Input defaultValue={user.name || "Restaurant owner"} /></div>
             <div className="grid gap-2"><Label>Email</Label><Input defaultValue={user.email || ""} /></div>
             <div className="grid gap-2 md:col-span-2"><Label>Escalation preference</Label><Input defaultValue="Notify me when catering, complaints, or low-confidence questions need a human" /></div>
-            <div className="grid gap-2 md:col-span-2"><Label>WhatsApp connection</Label><div className="rounded-2xl border px-4 py-3 text-sm text-muted-foreground">{workspace.mode === "starter" ? "We will show connection status here once setup is complete." : "Connected through your TenantChat setup team"}</div></div>
+            <div className="grid gap-2 md:col-span-2"><Label>WhatsApp connection</Label><div className="rounded-2xl border px-4 py-3 text-sm text-muted-foreground">{"Connected through your TenantChat setup team"}</div></div>
           </CardContent>
         </Card>
         <Card>

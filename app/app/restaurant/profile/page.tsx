@@ -11,16 +11,17 @@ import { getVerticalWorkspaceData } from "@/lib/services/vertical-workspace";
 export default async function RestaurantProfilePage() {
   const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-in");
-  const workspace = getVerticalWorkspaceData(tenant);
+  const workspace = await getVerticalWorkspaceData(tenant);
   if (!workspace) redirect("/app");
+  if (workspace.mode === "starter") redirect("/app/restaurant/onboarding");
   const profile = workspace.profile;
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Restaurant Profile"
-        title={workspace.mode === "starter" ? "Add the basics guests need most" : "Keep the basics accurate"}
-        description={workspace.mode === "starter" ? "Start with your name, phone, address, website, and hours. You can keep everything else light for now." : "These are the details your guests rely on most. We prefilled them from your materials so you can review instead of starting from scratch."}
+        title="Keep the basics accurate"
+        description="These are the details your guests rely on most. We prefilled them from your materials so you can review instead of starting from scratch."
         actions={<Button>Save changes</Button>}
       />
       <div className="grid gap-6 xl:grid-cols-[1.25fr,0.75fr]">
@@ -45,8 +46,8 @@ export default async function RestaurantProfilePage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>{workspace.mode === "starter" ? "Hours" : "Regular hours"}</CardTitle>
-              <CardDescription>{workspace.mode === "starter" ? "Add your normal opening hours. Holiday hours can come later." : "We found your weekly schedule."}</CardDescription>
+              <CardTitle>Regular hours</CardTitle>
+              <CardDescription>We found your weekly schedule.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               {profile.regularHours.length ? profile.regularHours.map((row) => (
@@ -60,7 +61,7 @@ export default async function RestaurantProfilePage() {
           <Card>
             <CardHeader>
               <CardTitle>Guest services</CardTitle>
-              <CardDescription>{workspace.mode === "starter" ? "A simple start is enough. Turn these on when you're ready." : "Reservation, takeout, and catering preferences."}</CardDescription>
+              <CardDescription>Reservation, takeout, and catering preferences.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-muted-foreground">
               <div>

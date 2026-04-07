@@ -10,16 +10,17 @@ import { getVerticalWorkspaceData } from "@/lib/services/vertical-workspace";
 export default async function RestaurantPreviewPage() {
   const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-in");
-  const workspace = getVerticalWorkspaceData(tenant);
+  const workspace = await getVerticalWorkspaceData(tenant);
   if (!workspace) redirect("/app");
+  if (workspace.mode === "starter") redirect("/app/restaurant/onboarding/review");
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Assistant Preview"
-        title={workspace.mode === "starter" ? "See how the preview works before you go live" : "Preview your assistant anytime"}
-        description={workspace.mode === "starter" ? "These sample prompts show the kinds of questions guests will ask. Once we process your website and menu, this preview becomes specific to your restaurant." : "Use this live-feeling simulation to review tone, intent coverage, confidence, and source transparency before making changes visible to guests."}
-        actions={workspace.mode === "starter" ? <Button asChild><Link href="/app/restaurant/setup">Add materials first</Link></Button> : undefined}
+        title="Preview your assistant anytime"
+        description="Use this live-feeling simulation to review tone, intent coverage, confidence, and source transparency before making changes visible to guests."
+        actions={<Button asChild variant="outline"><Link href="/app/restaurant/setup">Review setup</Link></Button>}
       />
       <AssistantPreview answers={workspace.previewAnswers} description="Preloaded test prompts cover reservations, dietary questions, and catering inquiries." />
       <Card>

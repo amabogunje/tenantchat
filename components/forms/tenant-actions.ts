@@ -76,6 +76,89 @@ export async function addWebsiteSourceAction(formData: FormData) {
   redirect("/app/restaurant/setup");
 }
 
+function inferSourceType(filename: string, mimeType: string) {
+  const name = filename.toLowerCase();
+  const mime = mimeType.toLowerCase();
+
+  if (mime.startsWith("image/") || /\.(png|jpe?g|gif|webp|heic|svg)$/.test(name)) {
+    return SourceType.IMAGE;
+  }
+
+  if (mime === "application/pdf" || name.endsWith(".pdf")) {
+    return SourceType.PDF;
+  }
+
+  return SourceType.TEXT;
+}
+
+export async function saveSetupLinksAction(formData: FormData) {
+  const { tenant } = await requireTenantAdminContext();
+  if (!tenant) redirect("/sign-up");
+
+  const rawLinks = formData
+    .getAll("links")
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+
+  const normalizedLinks = Array.from(new Set(rawLinks.map((value) => (value.startsWith("http://") || value.startsWith("https://") ? value : `https://${value}`))));
+
+  const existingUrls = new Set(
+    (
+      await prisma.sourceDocument.findMany({
+        where: { tenantId: tenant.id, sourceType: SourceType.WEBSITE },
+        select: { sourceUrl: true },
+      })
+    )
+      .map((item) => item.sourceUrl)
+      .filter((value): value is string => Boolean(value)),
+  );
+
+  for (const url of normalizedLinks) {
+    if (existingUrls.has(url)) continue;
+    const source = await createWebsiteSource(tenant.id, url);
+    await processSource(source.id);
+  }
+
+  redirect("/app/restaurant/onboarding/documents");
+}
+
+export async function uploadSetupDocumentsAction(formData: FormData) {
+  const { tenant } = await requireTenantAdminContext();
+  if (!tenant) redirect("/sign-up");
+
+  const files = formData.getAll("files").filter((value): value is File => value instanceof File && value.size > 0);
+
+  for (const file of files) {
+    const sourceType = inferSourceType(file.name, file.type);
+
+    if (sourceType === SourceType.IMAGE) {
+      await prisma.sourceDocument.create({
+        data: {
+          tenantId: tenant.id,
+          sourceType,
+          originalName: file.name,
+          extractedText: `Image uploaded: ${file.name}. Manual review may still be needed.`,
+          ingestionStatus: "NEEDS_REVIEW",
+          metadataJson: { mimeType: file.type, size: file.size },
+        },
+      });
+      continue;
+    }
+
+    let extractedText = "";
+    try {
+      extractedText = await file.text();
+    } catch {
+      extractedText = `${file.name}\n\nUploaded by the restaurant owner during setup. Use this file as supporting source material and flag it for review if details are unclear.`;
+    }
+
+    const source = await createTextSource(tenant.id, file.name, extractedText, sourceType);
+    await processSource(source.id);
+  }
+
+  redirect("/app/restaurant/onboarding/review");
+}
+
 export async function addTextSourceAction(formData: FormData) {
   const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-up");
@@ -97,8 +180,18 @@ export async function processSourceAction(formData: FormData) {
 export async function publishKnowledgeAction() {
   const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-up");
+
+  const pendingSources = await prisma.sourceDocument.findMany({
+    where: { tenantId: tenant.id, ingestionStatus: "PENDING", sourceType: { in: [SourceType.WEBSITE, SourceType.PDF, SourceType.TEXT] } },
+    select: { id: true },
+  });
+
+  for (const source of pendingSources) {
+    await processSource(source.id);
+  }
+
   await publishKnowledge(tenant.id);
-  redirect("/app/restaurant/questions");
+  redirect("/app/restaurant/overview");
 }
 
 export async function updateEscalationContact(formData: FormData) {

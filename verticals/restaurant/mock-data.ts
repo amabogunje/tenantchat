@@ -71,7 +71,7 @@ export type RestaurantWorkspaceData = {
   notifications: Array<{ title: string; detail: string }>;
 };
 
-const demoTenantSlugs = new Set(["rivera-kitchen", "northside-barber", "atlas-auto-care"]);
+export const demoTenantSlugs = new Set(["rivera-kitchen", "northside-barber", "atlas-auto-care"]);
 
 function menuRefs(prefix: string) {
   return [`${prefix} menu PDF`, `${prefix} website menu section`];
@@ -113,7 +113,7 @@ function buildStarterProfile(tenant: Tenant): RestaurantProfile {
   };
 }
 
-function buildStarterWorkspace(tenant: Tenant): RestaurantWorkspaceData {
+export function buildStarterWorkspace(tenant: Tenant): RestaurantWorkspaceData {
   return {
     verticalKey: "restaurant",
     mode: "starter",
@@ -170,7 +170,7 @@ function buildStarterWorkspace(tenant: Tenant): RestaurantWorkspaceData {
   };
 }
 
-function buildDemoWorkspace(tenant: Tenant): RestaurantWorkspaceData {
+export function buildDemoWorkspace(tenant: Tenant): RestaurantWorkspaceData {
   const businessName = tenant.name;
   const profile: RestaurantProfile = {
     id: `${tenant.id}-profile`,

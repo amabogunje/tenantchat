@@ -10,33 +10,9 @@ import { getVerticalWorkspaceData } from "@/lib/services/vertical-workspace";
 export default async function MenuPage() {
   const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-in");
-  const workspace = getVerticalWorkspaceData(tenant);
+  const workspace = await getVerticalWorkspaceData(tenant);
   if (!workspace) redirect("/app");
-
-  if (workspace.mode === "starter") {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          eyebrow="Menu and Services"
-          title="Your menu will show up here"
-          description="Upload a menu or add a few items when you're ready. We will organize categories, prices, dietary tags, takeout, and catering for you."
-          actions={<Button asChild><a href="/app/restaurant/setup">Add menu materials</a></Button>}
-        />
-        <Card>
-          <CardHeader>
-            <CardTitle>What we can build for you</CardTitle>
-            <CardDescription>Once you upload a menu, this page becomes the easiest place to keep it current.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2 text-sm text-muted-foreground">
-            <div className="rounded-2xl border p-4">Menu categories and items</div>
-            <div className="rounded-2xl border p-4">Prices and descriptions</div>
-            <div className="rounded-2xl border p-4">Dietary tags and options</div>
-            <div className="rounded-2xl border p-4">Takeout and catering availability</div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  if (workspace.mode === "starter") redirect("/app/restaurant/onboarding");
 
   return (
     <div className="space-y-6">

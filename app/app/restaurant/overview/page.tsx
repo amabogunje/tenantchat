@@ -11,45 +11,46 @@ import { getVerticalWorkspaceData } from "@/lib/services/vertical-workspace";
 export default async function RestaurantOverviewPage() {
   const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-in");
-  const workspace = getVerticalWorkspaceData(tenant);
+  const workspace = await getVerticalWorkspaceData(tenant);
   if (!workspace) redirect("/app");
 
   if (workspace.mode === "starter") {
+    if (workspace.uploadedArtifacts.length > 0) {
+      redirect("/app/restaurant/onboarding");
+    }
+
     return (
-      <div className="space-y-6">
-        <PageHeader
-          eyebrow="Overview"
-          title="Let's get your assistant ready"
-          description="You do not need to build this from scratch. Start with your basics, upload what you already have, and we will guide you through the rest."
-          actions={<Button asChild><Link href="/app/restaurant/onboarding">Start setup</Link></Button>}
-        />
-        <section className="grid gap-4 md:grid-cols-3">
-          <StatusCard label="Assistant status" value="Draft" detail="Not live yet" />
-          <StatusCard label="What we found" value="0 details" detail="We have not processed your materials yet" />
-          <StatusCard label="Needs review" value="0" detail="Nothing to review until setup begins" />
-        </section>
-        <Card>
-          <CardHeader>
-            <CardTitle>Start here</CardTitle>
-            <CardDescription>A simple, non-technical setup flow for restaurant owners.</CardDescription>
+      <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-4xl items-center px-6 py-12">
+        <Card className="w-full rounded-[2rem] border-border/70 bg-card/95 shadow-xl shadow-black/5">
+          <CardHeader className="space-y-5 p-8 sm:p-10">
+            <div className="inline-flex w-fit rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+              TenantChat for restaurants
+            </div>
+            <div className="space-y-3">
+              <CardTitle className="text-3xl font-semibold tracking-tight sm:text-4xl">Let&apos;s get your system ready</CardTitle>
+              <CardDescription className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+                Add a few links, upload the documents you already use, and we&apos;ll turn that into the first version of your restaurant assistant. You won&apos;t see the dashboard until it&apos;s ready.
+              </CardDescription>
+            </div>
           </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2">
-            <a href="/app/restaurant/onboarding" className="rounded-2xl border p-4 hover:bg-muted">
-              <div className="font-medium">1. Add your basics</div>
-              <div className="mt-1 text-sm text-muted-foreground">Restaurant name, website, phone, and address.</div>
-            </a>
-            <a href="/app/restaurant/setup" className="rounded-2xl border p-4 hover:bg-muted">
-              <div className="font-medium">2. Upload your menu and files</div>
-              <div className="mt-1 text-sm text-muted-foreground">Menus, flyers, brochures, PDFs, and notes.</div>
-            </a>
-            <a href="/app/restaurant/preview" className="rounded-2xl border p-4 hover:bg-muted">
-              <div className="font-medium">3. Preview the assistant</div>
-              <div className="mt-1 text-sm text-muted-foreground">See sample chats before you go live.</div>
-            </a>
-            <a href="/app/restaurant/profile" className="rounded-2xl border p-4 hover:bg-muted">
-              <div className="font-medium">4. Confirm your details</div>
-              <div className="mt-1 text-sm text-muted-foreground">Hours, reservations, takeout, and catering.</div>
-            </a>
+          <CardContent className="space-y-6 p-8 pt-0 sm:p-10 sm:pt-0">
+            <div className="grid gap-3 rounded-[1.75rem] bg-muted/50 p-5 text-sm text-muted-foreground sm:grid-cols-3">
+              <div className="rounded-2xl bg-background px-4 py-4">
+                <div className="font-medium text-foreground">1. Add your links</div>
+                <div className="mt-1">Website, Instagram, Facebook, or any page customers already see.</div>
+              </div>
+              <div className="rounded-2xl bg-background px-4 py-4">
+                <div className="font-medium text-foreground">2. Upload documents</div>
+                <div className="mt-1">Menus, flyers, brochures, PDFs, photos, and notes.</div>
+              </div>
+              <div className="rounded-2xl bg-background px-4 py-4">
+                <div className="font-medium text-foreground">3. Review and publish</div>
+                <div className="mt-1">Check what we found, then make your assistant live.</div>
+              </div>
+            </div>
+            <Button asChild size="lg" className="w-full sm:w-auto">
+              <Link href="/app/restaurant/onboarding">Start setup</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -81,7 +82,7 @@ export default async function RestaurantOverviewPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Today's updates</CardTitle>
+              <CardTitle>Today&apos;s updates</CardTitle>
               <CardDescription>Temporary changes customers should hear right away.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">

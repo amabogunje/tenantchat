@@ -9,34 +9,9 @@ import { getVerticalWorkspaceData } from "@/lib/services/vertical-workspace";
 export default async function CustomerQuestionsPage() {
   const { tenant } = await requireTenantAdminContext();
   if (!tenant) redirect("/sign-in");
-  const workspace = getVerticalWorkspaceData(tenant);
+  const workspace = await getVerticalWorkspaceData(tenant);
   if (!workspace) redirect("/app");
-
-  if (workspace.mode === "starter") {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          eyebrow="Customer Questions"
-          title="Answer review will show up here"
-          description="Once we process your website or menu, we will draft common customer questions and show you exactly how the assistant plans to answer them."
-          actions={<Button asChild><a href="/app/restaurant/preview">Open preview</a></Button>}
-        />
-        <Card>
-          <CardHeader>
-            <CardTitle>What you will be able to review</CardTitle>
-            <CardDescription>Plain-English answers with confidence and source references.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <div>Do you take reservations?</div>
-            <div>Do you offer catering?</div>
-            <div>Do you have vegetarian or vegan options?</div>
-            <div>Can I order takeout?</div>
-            <div>Do you have parking?</div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  if (workspace.mode === "starter") redirect("/app/restaurant/onboarding");
 
   return (
     <div className="space-y-6">
